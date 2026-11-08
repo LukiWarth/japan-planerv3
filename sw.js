@@ -1,5 +1,5 @@
 // Service Worker: App offline verfügbar machen, Kartenkacheln beim Ansehen merken
-const V = 'japan-planer3-v2';
+const V = 'japan-planer3-v3';
 const TILES = 'japan2-tiles-v1';
 const LEAF = 'https://unpkg.com/leaflet@1.9.4/dist/';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png', LEAF + 'leaflet.css', LEAF + 'leaflet.js'];
