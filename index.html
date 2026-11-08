@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Japan Reiseplaner</title>
+<meta name="theme-color" content="#d9472b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:light dark;--bg:#faf6f0;--card:#fff;--ink:#23284a;--mut:#6b6f8a;--line:#e8e1d6;--acc:#d9472b;--soft:#f3ece2;--blue:#1e6fd9;--ok:#2f9e6b;--warn:#d99a1d;--bad:#c43d52;--sh:0 4px 18px #2b3a6722;--r:16px}
+@media(prefers-color-scheme:dark){:root{--bg:#14172b;--card:#1e2243;--ink:#eceefb;--mut:#9aa0c4;--line:#2d3358;--acc:#ff6a4d;--soft:#272c52;--blue:#6aa8ff;--sh:0 4px 18px #0007}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--acc)}
+.mut{color:var(--mut)}.sm{font-size:.82rem}
+/* Kopfzeile */
+#top{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--card);border-bottom:1px solid var(--line);z-index:30}
+#brand{font-weight:800;font-size:1.05rem;white-space:nowrap}
+#brand i{font-style:normal;color:var(--acc)}
+#vs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;padding:4px 0}
+#vs::-webkit-scrollbar{display:none}
+.vc{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:6px 12px;white-space:nowrap;font-size:.85rem;font-weight:600}
+.vc.on{background:var(--acc);border-color:var(--acc);color:#fff}
+/* Aufbau */
+#app{position:absolute;top:54px;bottom:0;left:0;right:0;display:grid;grid-template-columns:440px 1fr}
+#panel{grid-column:1;grid-row:1;position:relative;z-index:50;display:flex;flex-direction:column;background:var(--bg);border-right:1px solid var(--line);min-height:0;z-index:20}
+#mapwrap{grid-column:2;grid-row:1;position:relative;min-width:0;z-index:0;isolation:isolate}
+#lmap{position:absolute;inset:0;background:#cfe3ee}
+#handle{display:none}
+#pbody{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch}
+#bn{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom)}
+#bn button{flex:1;border:0;background:none;padding:8px 1px 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.66rem;font-weight:600;color:var(--mut)}
+#bn button b{font-size:1.25rem;line-height:1}
+#bn button.on{color:var(--acc)}
+@media(max-width:820px){
+ #app{display:block}
+ #mapwrap{position:absolute;inset:0;z-index:0}
+ #panel{position:absolute;left:0;right:0;bottom:0;height:46%;border-right:0;border-radius:20px 20px 0 0;box-shadow:0 -6px 24px #0003;transition:height .25s ease}
+ #panel.drag{transition:none}
+ #handle{display:block;padding:9px 0 5px;touch-action:none;cursor:grab}
+ #handle i{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto}
+ #brand span{display:none}
+}
+/* Karte */
+#mc{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:500}
+#mc button{width:40px;height:40px;border-radius:12px;border:0;background:var(--card);box-shadow:var(--sh);font-size:1.1rem;display:grid;place-items:center}
+#mc button.on{background:var(--acc);color:#fff}
+#rstat{position:absolute;left:10px;top:10px;z-index:500;max-width:calc(100% - 70px);background:var(--card);box-shadow:var(--sh);border-radius:10px;padding:5px 10px;font-size:.76rem;color:var(--mut)}
+#rstat:empty{display:none}
+.mkw{background:none;border:0}
+.mk{position:relative;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 2px 8px #0006;font-size:18px;transition:transform .15s}
+.mk.act{transform:scale(1.3);box-shadow:0 0 0 4px #fff8,0 3px 12px #0008}
+.mk b{position:absolute;top:-9px;right:-9px;min-width:19px;height:19px;padding:0 4px;border-radius:99px;background:#23284a;color:#fff;font-size:11px;display:grid;place-items:center;border:2px solid #fff}
+.mkl{position:absolute;top:40px;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 12px system-ui;color:#23284a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 5px #fff;pointer-events:none}
+.pp{width:28px;height:28px;border-radius:50%;background:#fff;border:2.5px solid var(--c,#1c8fb5);display:grid;place-items:center;font-size:14px;box-shadow:0 2px 6px #0005;position:relative}
+.pp.dn{opacity:.5;filter:grayscale(.8)}
+.pp.hb{border-color:var(--blue);box-shadow:0 0 0 3px #1e6fd955,0 2px 6px #0005}
+.rl{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font:700 11.5px system-ui;background:#fffe;color:#23284a;border-radius:99px;padding:2px 8px;box-shadow:0 1px 5px #0004;pointer-events:none}
+.rl.hl{color:#1e6fd9}
+.tip{max-width:230px}
+.tip img{width:68px;height:68px;object-fit:cover;border-radius:8px;margin:2px}
+.pop{font:13px/1.4 system-ui;min-width:170px}
+.pop b{font-size:14px}
+.pop a{color:#d9472b;font-weight:600}
+/* Bausteine */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px;margin-bottom:12px}
+h2{font-size:1.1rem;margin:2px 0 10px}
+h3{font-size:.95rem;margin:14px 0 6px;display:flex;align-items:center;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:8px 12px;font-weight:600;font-size:.88rem;text-decoration:none;color:var(--ink)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.sm2{padding:5px 9px;font-size:.8rem;border-radius:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{width:100%;border:1.5px solid var(--line);background:var(--card);border-radius:11px;padding:8px 10px}
+textarea{min-height:88px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:0;border-color:transparent}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:4px 11px;font-size:.82rem}
+.chip.on{background:var(--soft);border-color:var(--acc);font-weight:700}
+.chip.add{border-style:dashed}
+.badge{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 9px;font-size:.76rem;font-weight:700;background:var(--soft)}
+.badge.ok{background:#2f9e6b22;color:var(--ok)}.badge.part{background:#d99a1d22;color:var(--warn)}.badge.early,.badge.late{background:#c43d5222;color:var(--bad)}
+/* Kennzahlen */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:14px;padding:10px 12px;box-shadow:var(--sh)}
+.kpi .i{font-size:1.4rem}.kpi b{display:block;font-size:1.2rem;line-height:1.2}.kpi span{font-size:.76rem;color:var(--mut)}
+/* Band */
+.ribbon{display:flex;gap:3px;margin:0 0 14px;height:62px}
+.ribbon div{border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.78rem;min-width:30px;overflow:hidden;cursor:pointer;text-shadow:0 1px 3px #0006}
+.ribbon div i{font-style:normal;font-size:1.25rem;line-height:1.1}
+/* Zielkarten */
+.sc{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;cursor:pointer;border:2px solid transparent}
+.sc.act{border-color:var(--acc)}
+.sc .hero{width:84px;flex:none;display:grid;place-items:center;font-size:2rem;position:relative;background-size:cover;background-position:center}
+.sc .hero b{position:absolute;top:6px;left:6px;background:#23284acc;color:#fff;border-radius:99px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 5px}
+.sc .sb{padding:10px 12px;flex:1;min-width:0}
+.sc .sb strong{display:block;font-size:1.02rem}
+.sc .go{align-self:center;padding-right:10px;color:var(--mut);font-size:1.4rem}
+.leg{margin:5px 0 5px 30px;padding-left:12px;border-left:3px dotted var(--acc);font-size:.8rem;color:var(--mut);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.leg a{font-weight:600}
+/* Zieldetail */
+.back{border:0;background:none;color:var(--acc);font-weight:700;padding:0 0 8px;font-size:.92rem}
+.hh{border-radius:var(--r);min-height:132px;padding:12px 14px;color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;background-size:cover;background-position:center;overflow:hidden;margin-bottom:10px}
+.hh::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#0000 30%,#000a)}
+.hh>*{position:relative}
+.hh .em{position:absolute;right:12px;top:6px;font-size:3.4rem;opacity:.95;filter:drop-shadow(0 2px 4px #0005)}
+.hh input{background:none;border:0;color:#fff;font-size:1.45rem;font-weight:800;padding:0;width:100%;text-shadow:0 2px 6px #0008}
+.hh input:focus{outline:1.5px dashed #fff8}
+.hh .sub{font-size:.85rem;text-shadow:0 1px 4px #0008}
+.step{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.step button{border:0;background:none;width:34px;height:34px;font-size:1.2rem}
+.step span{min-width:68px;text-align:center;font-weight:700;font-size:.88rem}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:14px;margin:12px 0}
+.tabs button{flex:1;border:0;background:none;border-radius:10px;padding:7px 2px;font-size:.8rem;font-weight:700;color:var(--mut)}
+.tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 5px #0002}
+.bloom{border-radius:12px;padding:9px 12px;font-size:.88rem;margin-bottom:10px;background:var(--soft)}
+.bloom.ok{background:#2f9e6b22}.bloom.part{background:#d99a1d22}.bloom.early,.bloom.late{background:#c43d5222}
+.imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.imgs div{position:relative;aspect-ratio:1;border-radius:10px;background-size:cover;background-position:center}
+.imgs div b{position:absolute;top:3px;right:3px;background:#000a;color:#fff;border-radius:99px;width:22px;height:22px;display:grid;place-items:center;font-size:.8rem;cursor:pointer}
+/* Orte */
+.srch{display:flex;gap:6px;position:sticky;top:-14px;background:var(--bg);padding:6px 0;z-index:5}
+.srch input{flex:1}
+.hit{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+.hit small{display:block;color:var(--mut)}
+.pc{background:var(--card);border-radius:14px;box-shadow:var(--sh);margin-bottom:8px;padding:8px 10px}
+.pc.dn .pn{text-decoration:line-through;opacity:.6}
+.pc .top{display:flex;align-items:center;gap:8px}
+.pc .pic{font-size:1.4rem;width:34px;text-align:center;flex:none}
+.pc .pn{border:0;background:none;font-weight:700;padding:3px 0;border-radius:6px}
+.pc .ib{border:0;background:var(--soft);border-radius:10px;width:34px;height:34px;flex:none;font-size:1rem}
+.pc .ib.on{background:var(--ok);color:#fff}
+.pc .more{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:grid;gap:7px}
+.pc.flash{animation:fl 2s}
+@keyframes fl{0%,60%{background:#ffe9a8}100%{background:var(--card)}}
+.pl{font-size:.82rem}
+/* Kosten */
+.it{display:grid;grid-template-columns:58px 1fr 84px 30px;gap:6px;margin-bottom:6px;align-items:center}
+.it select{padding:8px 2px}
+.x{border:0;background:none;color:var(--mut);font-size:1.3rem}
+.bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--soft)}
+.legend{display:grid;gap:4px;margin-top:8px}
+.legend div{display:flex;align-items:center;gap:8px;font-size:.88rem}
+.legend i{width:12px;height:12px;border-radius:4px;flex:none}
+.legend span{margin-left:auto;font-weight:700}
+.donut{display:block;margin:0 auto;width:190px;height:190px}
+.donut text{text-anchor:middle;fill:var(--ink)}
+/* Blüte */
+.tl{position:relative;margin:6px 0 4px}
+.tlr{display:grid;grid-template-columns:92px 1fr;gap:6px;align-items:center;margin:5px 0;font-size:.8rem}
+.tlr .t{position:relative;height:22px;background:var(--soft);border-radius:7px}
+.tlr .t i{position:absolute;top:0;bottom:0;border-radius:7px;font-style:normal}
+.tlr .t .b{background:#f6a5b8aa;border:1px solid #e0708f}
+.tlr .t .v{background:#2b3a67;top:7px;bottom:7px;border-radius:5px}
+.axis{display:grid;grid-template-columns:92px 1fr;font-size:.7rem;color:var(--mut)}
+.axis div{position:relative;height:16px}.axis span{position:absolute;transform:translateX(-50%)}
+#dayfl{position:absolute;left:50%;top:52px;transform:translateX(-50%);z-index:500;background:#8a3fc7;color:#fff;border-radius:99px;padding:6px 6px 6px 14px;font-size:.82rem;font-weight:700;box-shadow:var(--sh);display:none;align-items:center;gap:8px;max-width:calc(100% - 140px)}
+#dayfl.on{display:flex}#dayfl button{border:0;background:#fff3;color:#fff;border-radius:99px;width:26px;height:26px;flex:none}
+.cn{width:20px;height:20px;border-radius:50%;background:#8a3fc7;color:#fff;font:800 12px system-ui;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 1px 4px #0006}
+.mg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.mg .wd{font-size:.7rem;color:var(--mut);text-align:center}
+.mc{aspect-ratio:1;border-radius:10px;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;color:#fff;position:relative;line-height:1.1;text-shadow:0 1px 2px #0005;padding:0}
+.mc.off{color:var(--mut);background:none;font-weight:500;text-shadow:none}
+.mc i{font-style:normal;font-size:.8rem}
+.mc u{position:absolute;top:2px;right:3px;text-decoration:none;background:#23284a;color:#fff;border-radius:99px;font-size:.62rem;min-width:15px;height:15px;display:grid;place-items:center}
+.day{background:var(--card);border-radius:14px;box-shadow:var(--sh);padding:10px;margin-bottom:10px}
+.day.on{outline:2px solid #8a3fc7}.day.flash{animation:fl 2s}
+.dhd{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.dz{min-height:46px;border:2px dashed var(--line);border-radius:12px;padding:6px;display:grid;gap:5px;align-content:start}
+.dz.ov{border-color:#8a3fc7;background:#8a3fc71a}
+.dc{background:var(--soft);border-radius:10px;padding:5px 8px}
+.dc.lift{opacity:.4}.dc.ovc{box-shadow:0 -3px 0 #8a3fc7}
+.dr{display:flex;align-items:center;gap:8px}
+.dh{touch-action:none;cursor:grab;font-size:1.2rem;padding:4px 6px;color:var(--mut);user-select:none}
+.dn{background:#8a3fc7;color:#fff;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-size:.72rem;font-weight:800;flex:none}
+.dt{flex:1;min-width:0;cursor:pointer;font-weight:600;font-size:.9rem}
+.ce{display:flex;gap:6px;margin-top:6px}.ce input,.ce select{flex:1;padding:5px 8px}
+.dsum{margin-top:8px}
+.ghost{position:fixed;z-index:5000;pointer-events:none;transform:translate(-50%,-120%);background:#8a3fc7;color:#fff;border-radius:12px;padding:6px 12px;font-weight:700;font-size:.85rem;box-shadow:0 6px 18px #0006;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast-x{}
+.tlz{position:relative;margin-top:8px;border-radius:10px;background:var(--soft)}
+.tlz.ov{outline:2px solid #8a3fc7}
+.hl{position:absolute;left:0;right:0;border-top:1px solid var(--line);font-size:.68rem;color:var(--mut);pointer-events:none}
+.hl span{position:absolute;left:5px;top:1px}
+.tlb{position:absolute;left:46px;right:4px;top:0;bottom:0}
+.tb{position:absolute;border-radius:9px;color:#fff;padding:3px 7px 14px;font-size:.76rem;font-weight:700;touch-action:none;cursor:grab;overflow:hidden;box-shadow:0 2px 7px #0004;line-height:1.25;user-select:none}
+.tb small{display:block;font-weight:500;opacity:.92}
+.tb.tight{outline:2.5px solid #ffd84d}
+.tb.mvg{opacity:.85;z-index:5}
+.tbh{position:absolute;left:0;right:0;bottom:0;height:16px;cursor:ns-resize;touch-action:none;background:linear-gradient(#0000,#0005)}
+.tbh::after{content:"";position:absolute;left:50%;bottom:5px;width:26px;height:3px;border-radius:9px;background:#fffc;transform:translateX(-50%)}
+.tr{position:absolute;left:74%;width:25%;white-space:nowrap;border-radius:8px;color:#fff;padding:2px 5px;font-size:.7rem;font-weight:700;overflow:hidden;background:repeating-linear-gradient(45deg,#4f6f8f,#4f6f8f 7px,#6b8bab 7px,#6b8bab 14px);box-shadow:0 1px 4px #0003;line-height:1.2;pointer-events:none}
+.tr small{display:block;font-weight:500;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ce{flex-wrap:wrap}.ce label{display:flex;flex-direction:column;font-size:.7rem;color:var(--mut);flex:1;min-width:96px}
+.tbx{position:absolute;top:2px;right:5px;cursor:pointer;font-size:1rem;line-height:1;padding:2px}
+.pth{width:38px;height:38px;border-radius:10px;object-fit:cover;flex:none}
+.ph{display:flex;gap:6px;overflow-x:auto;margin-top:6px;padding-bottom:2px}
+.ph div{position:relative;flex:none}
+.ph img{height:68px;width:auto;max-width:130px;border-radius:9px;object-fit:cover;cursor:zoom-in;display:block;background:var(--soft);min-width:60px}
+.ph b{position:absolute;top:2px;right:2px;background:#000a;color:#fff;border-radius:99px;width:20px;height:20px;display:grid;place-items:center;font-size:.8rem;cursor:pointer}
+#lb{position:fixed;inset:0;background:#000d;z-index:6000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+#lb.on{display:flex}#lb img{max-width:96vw;max-height:80vh;border-radius:12px}#lb a{color:#fff;font-size:.85rem}
+.hero2{background:linear-gradient(135deg,#d9472b,#f08a5d);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
+.hero2 .mut{color:#fffc}.hero2 .big{font-size:2rem;font-weight:800;line-height:1.15;margin:4px 0}.hero2 .badge{background:#fff3;color:#fff}
+.hrow{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line)}.hrow:first-of-type{border-top:0}.ht{width:48px;flex:none;font-weight:800;font-size:.9rem;line-height:1.2}
+.bkr{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.bks{border:0;background:var(--soft);border-radius:10px;width:38px;height:38px;font-size:1.2rem;flex:none}
+.bkt{font-weight:700;font-size:.92rem}.bkt.dn2{text-decoration:line-through;opacity:.65}
+.bkr input{padding:5px 8px;font-size:.82rem;margin-top:3px}
+#doc{position:fixed;inset:0;background:#fff;color:#1d2140;z-index:7000;display:none;flex-direction:column;color-scheme:light}
+#doc.on{display:flex}.dbar{display:flex;gap:8px;padding:10px;background:#1d2140;flex-wrap:wrap}.dbar button{border:0;border-radius:10px;padding:8px 14px;font-weight:700;background:#fff;color:#1d2140}
+#docb{overflow:auto;flex:1}
+@media print{html,body{height:auto!important;overflow:visible!important;background:#fff!important}#top,#app,#toast,#lb,.dbar{display:none!important}#doc{position:static!important;display:block!important;overflow:visible!important}#docb{overflow:visible!important}.dpage{max-width:none!important;padding:0!important}}
+#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#23284aef;color:#fff;padding:9px 16px;border-radius:99px;font-size:.86rem;z-index:3000;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+#toast.on{opacity:1}
+.leaflet-popup-content{margin:12px 14px}
+@media(min-width:821px){#toast{bottom:30px}}
+</style>
+</head>
+<body>
+<header id="top"><div id="brand">🌸 <span>Japan <i>2027</i></span></div><div id="vs"></div></header>
+<div id="app">
+ <section id="mapwrap"><div id="lmap"></div><div id="rstat"></div><div id="dayfl"><span id="dayt"></span><button id="dayx" title="Tagesroute ausblenden">✕</button></div>
+  <div id="mc"><button id="zi" title="Vergrößern">＋</button><button id="zo" title="Verkleinern">−</button><button id="zr" title="Ganze Reise zeigen">⟲</button><button id="zs" title="Satellit ein/aus">🛰️</button><button id="zd" title="Straßenrouten ein/aus">🛣️</button><button id="zl" title="Mein Standort">📡</button></div></section>
+ <aside id="panel"><div id="handle"><i></i></div><div id="pbody"></div>
+  <nav id="bn"><button data-v="home"><b>🏠</b>Start</button><button data-v="route"><b>🗺️</b>Reise</button><button data-v="cal"><b>📅</b>Plan</button><button data-v="budget"><b>💶</b>Budget</button><button data-v="bloom"><b>🌸</b>Blüte</button><button data-v="more"><b>⚙️</b>Mehr</button></nav></aside>
+</div>
+<div id="toast"></div><div id="doc"><div class="dbar"><button data-d="print">🖨️ Drucken / als PDF speichern</button><button data-d="save">💾 Als Datei speichern</button><button data-d="close">Schließen</button></div><div id="docb"><div class="dpage" id="docp"></div></div></div><div id="lb"><img alt=""><a id="lbs" target="_blank" rel="noopener"></a></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const FOOD={
+'Fukuoka':'Hakata-Ramen (Schweineknochen-Brühe)\nMotsunabe (Innereien-Eintopf)\nYatai-Streetfood am Fluss',
+'Nagasaki':'Champon (Nudelsuppe mit Meeresfrüchten)\nSara Udon\nCastella (Biskuitkuchen)',
+'Kumamoto & Aso':'Kumamoto-Ramen mit Knoblauchöl\nKarashi Renkon (Lotuswurzel mit Senf)\nTaipien (Glasnudelsuppe)',
+'Kagoshima & Sakurajima':'Kurobuta (Schwarzschwein)\nSatsuma-Age (frittierter Fischkuchen)\nShirokuma (Eisdessert)',
+'Hiroshima & Miyajima':'Hiroshima-Okonomiyaki\nGegrillte Austern von Miyajima\nAnago-Meshi (Aal auf Reis)\nMomiji Manju',
+'Osaka':'Takoyaki (Oktopus-Bällchen)\nOkonomiyaki\nKushikatsu (frittierte Spieße)',
+'Osaka & Nara':'Takoyaki (Oktopus-Bällchen)\nOkonomiyaki\nKakinoha-Zushi (Sushi in Blättern, Nara)',
+'Kyoto':'Kaiseki\nYudofu (Tofu im Heißtopf)\nMatcha-Süßigkeiten\nStreetfood am Nishiki-Markt',
+'Hakone':'Kaiseki-Menü im Ryokan\nKuro-Tamago (schwarze Onsen-Eier)\nSoba-Nudeln',
+'Tokio':'Sushi (Toyosu-Markt)\nRamen\nTonkatsu (paniertes Schnitzel)\nMonjayaki',
+'Kanazawa':'Kaisendon (Seafood-Reisschale)\nJibuni (Kanazawa-Eintopf)\nSoftgelato mit Blattgold',
+'Kawaguchiko & Fuji':'Houtou (Miso-Nudeleintopf mit Kürbis)\nYoshida-Udon (feste Nudeln)\nFuji-Forelle',
+'Matsumoto':'Soba-Nudeln\nOyaki (gefüllte Teigtaschen)\nWasabi-Spezialitäten',
+'Takayama & Shirakawa-go':'Hida-Rind\nTakayama-Ramen\nMitarashi Dango (Reisklößchen)'};
+const SPOT={
+'Tokio':'Sumida Park\nUeno Park\nShinjuku Gyoen (bis Ende April, 500 Yen)\nMeguro-Fluss (abends beleuchtet)\nYoyogi Park\nInokashira Park',
+'Kyoto':'Arashiyama\nPhilosophenpfad\nKiyomizudera (abends beleuchtet)\nNinnaji (Spätblüte)',
+'Osaka':'Burg Osaka Park (über 4.000 Bäume)\nBurg Himeji (Tagesausflug)\nNara Park (Tagesausflug)',
+'Osaka & Nara':'Burg Osaka Park\nNara Park\nBerg Yoshino (bis Mitte April, ca. 2 Std. entfernt)',
+'Hiroshima & Miyajima':'Burg Hiroshima\nMiyajima',
+'Fukuoka':'Burgruine Fukuoka (Maizuru Park)\nUminonakamichi Seaside Park',
+'Kagoshima & Sakurajima':'Yoshino Park\nSakurajima Dinosaur Park',
+'Matsumoto':'Burg Matsumoto (über 200 Kirschbäume)',
+'Kawaguchiko & Fuji':'Nordufer des Kawaguchi-Sees mit Fuji (Mitte April)'};
+const SAK={'Fukuoka':['03-15','03-30'],'Nagasaki':['03-18','03-31'],'Kumamoto & Aso':['03-18','03-31'],'Kagoshima & Sakurajima':['03-15','03-30'],'Hiroshima & Miyajima':['03-15','03-31'],'Osaka':['03-24','04-06'],'Osaka & Nara':['03-24','04-06'],'Kyoto':['03-25','04-06'],'Hakone':['03-30','04-12'],'Kawaguchiko & Fuji':['04-08','04-20'],'Matsumoto':['04-01','04-15'],'Takayama & Shirakawa-go':['04-10','04-22'],'Kanazawa':['03-30','04-10'],'Tokio':['03-22','04-05']};
+const ST={
+'Fukuoka':[33.59,130.4,'Yatai-Streetfood am Fluss, Ohori Park, Burgruine Maizuru mit Kirschbäumen.','ES',110,42,30,180],
+'Nagasaki':[32.75,129.88,'Friedenspark, Glover Garden, Hafenblick vom Inasa-Berg.','KSE',105,40,40,60],
+'Kumamoto & Aso':[32.8,130.71,'Burg Kumamoto, Aso-Vulkan, Onsen-Dörfer.','NKR',100,40,70,70],
+'Kagoshima & Sakurajima':[31.6,130.56,'Aktiver Vulkan Sakurajima per Fähre, Sand-Onsen in Ibusuki.','NRE',100,40,40,70],
+'Hiroshima & Miyajima':[34.39,132.46,'Friedensmuseum, schwimmendes Torii, Okonomiyaki.','KNE',115,42,50,70],
+'Osaka':[34.69,135.5,'Streetfood in Dotonbori, Burg Osaka, Tagesausflug nach Himeji oder Nara.','ESK',110,45,60,40],
+'Osaka & Nara':[34.69,135.5,'Dotonbori, Burg Osaka, Hirsche im Nara Park, Tempel Todaiji.','ESK',110,45,60,40],
+'Kyoto':[35.01,135.77,'Philosophenpfad, Arashiyama, Fushimi Inari, Teezeremonie.','KER',130,45,80,30],
+'Hakone':[35.23,139.02,'Onsen-Ryokan, Blick auf den Fuji, Seilbahn.','NRE',170,55,60,80],
+'Tokio':[35.68,139.76,'Sushi, Ramen, Shinjuku Gyoen, Meguro-Fluss, Asakusa.','SEK',125,45,100,60],
+'Kanazawa':[36.56,136.66,'Kenroku-en-Garten, Samurai-Viertel, Seafood am Omicho-Markt.','KSE',110,42,40,70],
+'Kawaguchiko & Fuji':[35.5,138.77,'Fuji-Blick vom See, Onsen, Wanderung am Chureito-Pagodenhügel.','NR',120,40,60,70],
+'Matsumoto':[36.24,137.97,'Burg Matsumoto, Soba, Tor zu den Japanischen Alpen.','KN',105,38,50,40],
+'Takayama & Shirakawa-go':[36.14,137.25,'Altstadt Takayama, Strohdachhäuser in Shirakawa-go.','KN',115,40,80,60]};
+const PRE={
+v1:{t:'Japan: Der Blüte folgen',fl:1100,w:'Ihr reist mit der Blüte: Sie startet im Südwesten und zieht nach Nordosten. So erwischt ihr Fukuoka und Hiroshima früh, Kyoto und Osaka Ende März und Tokio zum Schluss. Einreise z. B. über Tokio mit Inlandsflug nach Fukuoka (ca. 2 Std.), Rückflug ab Tokio.',s:[['Fukuoka',2],['Hiroshima & Miyajima',3],['Osaka',3],['Kyoto',5],['Hakone',2],['Tokio',6]]},
+v2:{t:'Japan: Klassiker Ost → West',fl:1100,w:'Der Klassiker von Ost nach West. Im März seid ihr in Tokio früh dran, die Blüte holt euch erst später ein. Das passt besser bei Reisestart Ende März oder Anfang April (Reisestart im Kirschblüten-Check ändern). Rückflug ab Osaka.',s:[['Tokio',5],['Hakone',2],['Kanazawa',2],['Kyoto',6],['Hiroshima & Miyajima',3],['Osaka',3]]},
+v3:{t:'Japan: Natur & Berge',fl:1100,w:'Fuji-Region, Japanische Alpen, Takayama und Shirakawa-go, dazu Kyoto und Nara. Die Blüte kommt in den Bergen später (Matsumoto Anfang April, Fuji Mitte April), im März ist es dort oft noch kühl. Rückflug ab Osaka.',s:[['Tokio',4],['Kawaguchiko & Fuji',2],['Matsumoto',2],['Takayama & Shirakawa-go',3],['Kanazawa',2],['Kyoto',5],['Osaka & Nara',3]]},
+v4:{t:'Japan: Genuss & Onsen',fl:1100,w:'Kulinarik, Onsen und Entspannung: Ryokan in Hakone, Seafood in Kanazawa, Kaiseki in Kyoto, Streetfood in Osaka. Zum Schluss Hiroshima mit Miyajima, dann Rückflug ab Osaka.',s:[['Tokio',4],['Hakone',3],['Kanazawa',3],['Kyoto',5],['Osaka',4],['Hiroshima & Miyajima',2]]},
+v5:{t:'Japan: Süden & Kyushu',fl:1100,w:'Kyushu hat die früheste Blüte (Mitte bis Ende März), dazu Vulkane, Onsen und Seafood. Danach weiter nach Hiroshima, Osaka und Kyoto. Einreise z. B. über Tokio mit Inlandsflug nach Fukuoka, Rückflug ab Osaka.',s:[['Fukuoka',3],['Nagasaki',2],['Kumamoto & Aso',3],['Kagoshima & Sakurajima',3],['Hiroshima & Miyajima',3],['Osaka',3],['Kyoto',4]]}};
+const SUG={
+'Tokio':[['R','Ichiran Ramen Shibuya'],['R','Sushi Zanmai Tsukiji'],['A','teamLab Planets'],['S','Senso-ji Tempel Asakusa'],['S','Meiji-Schrein'],['A','Shibuya Sky']],
+'Hakone':[['O','Tenzan Tohji-kyo Onsen'],['A','Hakone Ropeway'],['N','Owakudani Schwefeltal'],['S','Hakone Open-Air Museum']],
+'Kyoto':[['S','Fushimi Inari Taisha'],['S','Kinkaku-ji (Goldener Pavillon)'],['N','Arashiyama Bambushain'],['R','Nishiki-Markt'],['A','Teezeremonie in Gion'],['S','Kiyomizu-dera']],
+'Osaka':[['R','Dotonbori Takoyaki'],['S','Burg Osaka'],['R','Kuromon-Markt'],['A','Universal Studios Japan'],['S','Shinsekai']],
+'Osaka & Nara':[['S','Todai-ji Nara'],['N','Nara Park (Hirsche)'],['R','Dotonbori Takoyaki'],['S','Burg Osaka']],
+'Hiroshima & Miyajima':[['S','Friedensgedenkpark und Museum'],['S','Itsukushima-Schrein'],['R','Okonomimura Hiroshima'],['N','Mt. Misen Seilbahn']],
+'Fukuoka':[['R','Yatai am Nakasu'],['R','Ichiran Hakata Ramen'],['S','Ohori Park'],['S','Kushida-Schrein']],
+'Nagasaki':[['S','Friedenspark Nagasaki'],['S','Glover Garden'],['N','Inasa-yama Nachtblick'],['R','Champon bei Shikairo']],
+'Kumamoto & Aso':[['S','Burg Kumamoto'],['N','Aso-Vulkan Naka-dake'],['O','Kurokawa Onsen']],
+'Kagoshima & Sakurajima':[['N','Sakurajima Fähre'],['O','Sand-Onsen Ibusuki'],['S','Sengan-en Garten'],['R','Kurobuta Tonkatsu']],
+'Kanazawa':[['S','Kenroku-en'],['R','Omicho-Markt'],['S','Higashi Chaya Viertel'],['S','21st Century Museum']],
+'Kawaguchiko & Fuji':[['N','Chureito-Pagode'],['O','Onsen mit Fuji-Blick'],['R','Houtou-Nudeleintopf']],
+'Matsumoto':[['S','Burg Matsumoto'],['R','Soba in Matsumoto'],['N','Kamikochi Tagesausflug']],
+'Takayama & Shirakawa-go':[['S','Altstadt Sanmachi Suji'],['S','Shirakawa-go Aussichtspunkt Shiroyama'],['R','Hida-Rind probieren']]};
+
+/* ---------- Grundlagen ---------- */
+const $=i=>document.getElementById(i);
+const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}};
+const TG={N:['🌿','Natur','#2f9e6b','#8fd3a8'],E:['🍜','Essen','#e07b24','#f7c27a'],S:['🏙️','Stadt','#4a5fa8','#a9b7ea'],B:['🏖️','Strand','#17a2b8','#8fdbe8'],K:['🛕','Kultur','#c43d52','#f0a1ae'],R:['😌','Entspannung','#8a63c7','#cdb6f0']};
+const PT=[['R','🍜','Restaurant'],['C','☕','Café'],['B','🍶','Bar'],['A','🎟️','Aktivität'],['S','🏯','Sehenswürdigkeit'],['N','🌿','Natur'],['O','♨️','Onsen'],['H','🛏️','Unterkunft'],['M','🛍️','Shopping'],['X','📍','Sonstiges']];
+const PI=c=>(PT.find(t=>t[0]===c)||[0,'📍'])[1];
+const PN=c=>(PT.find(t=>t[0]===c)||[0,0,'Ort'])[2];
+const GR=[['U','🛏️ Unterkunft'],['E','🍜 Essen'],['A','🎟️ Aktivitäten'],['R','🚌 Anreise'],['S','➕ Sonstiges']];
+const CATS=[['U','🛏️','Unterkunft','#6a5acd'],['E','🍜','Essen','#e07b24'],['A','🎟️','Aktivitäten','#17a2b8'],['R','🚌','Anreise & Sonstiges','#4a8f5a'],['F','✈️','Langstreckenflug','#c43d52'],['P','🛟','Puffer','#b0a58a']];
+const SHORT={v1:'🌸 Der Blüte folgen',v2:'🗼 Klassiker',v3:'⛰️ Natur & Berge',v4:'♨️ Genuss & Onsen',v5:'🌋 Süden & Kyushu'};
+const tg0=s=>TG[(s.tg||'K')[0]]||TG.K;
+const hav=(a,b)=>{const r=Math.PI/180,x=Math.sin((b.lat-a.lat)*r/2),y=Math.sin((b.lon-a.lon)*r/2),q=x*x+Math.cos(a.lat*r)*Math.cos(b.lat*r)*y*y;return 12742*Math.asin(Math.sqrt(q))};
+const ft=h=>{const m=Math.round(h*60);return m<60?m+' Min.':Math.floor(m/60)+' Std.'+(m%60?' '+('0'+m%60).slice(-2)+' Min.':'')};
+const eur=v=>Math.round(v).toLocaleString('de-AT')+' €';
+const safeUrl=u=>{u=String(u||'').trim();if(!u)return'';if(/^https?:\/\//i.test(u))return u;if(/^[a-z][a-z0-9+.-]*:/i.test(u))return'';return/\./.test(u)?'https://'+u:''};
+const gm=(la,lo)=>'https://www.google.com/maps/search/?api=1&query='+la+','+lo;
+const SPD=85;
+/* ---------- Zustand ---------- */
+const defBk=i=>[{t:'🛏️ Unterkunft',s:1,n:''}].concat(i>0?[{t:'🚆 Anreise zu diesem Ziel',s:1,n:''}]:[]);
+
+let RG=LS.get('jp3-rg',LS.get('jp2-rg','v1'));if(!PRE[RG])RG='v1';
+const KEY=r=>'jp3-'+r;
+function mk(r){const P=PRE[r];return{title:P.t,w:P.w,fl:P.fl,bf:10,start:'2027-03-14',shift:0,stops:P.s.map((x,i)=>{const a=ST[x[0]],n=x[1];return{id:'s'+i,n:x[0],d:n,lat:a[0],lon:a[1],note:a[2],tg:a[3],food:FOOD[x[0]]||'',sp:SPOT[x[0]]||'',pl:[],imgs:[],items:[{g:'U',t:'Doppelzimmer, '+n+' Nächte à '+a[4]+' €',a:n*a[4]},{g:'E',t:n+' Tage × 2 Personen à '+a[5]+' €',a:n*2*a[5]},{g:'A',t:'Aktivitäten und Eintritte',a:a[6]},{g:'R',t:'Anreise vor Ort (Zug, Flug, Transfer)',a:a[7]}]}})}}
+function load(){try{const s=LS.get(KEY(RG),'')||LS.get('jp2-'+RG,'');if(s){const o=JSON.parse(s);if(o&&o.stops)return mig(o)}}catch(e){}return mig(mk(RG))}
+function mig(o){o.start=o.start||'2027-03-14';o.shift=+o.shift||0;if(o.fl==null)o.fl=900;if(o.bf==null)o.bf=10;if(!o.fb)o.fb=[{t:'✈️ Hinflug',s:1,n:''},{t:'✈️ Rückflug',s:1,n:''}];o.stops.forEach((s,i)=>{if(!s.bk)s.bk=defBk(i);s.pl=s.pl||[];s.imgs=s.imgs||[];s.items=s.items||[];s.tg=s.tg||'K';s.food=s.food||'';s.sp=s.sp||'';s.note=s.note||''});return o}
+let S=load(),sel=-1,openS=false,view='home',sub='ov',HITS=[],openPl={},ROADS=LS.get('jp3-roads',LS.get('jp2-roads','1'))!=='0';
+let tmr=null;
+const save=()=>{if(!LS.set(KEY(RG),JSON.stringify(S)))toast('Speicher voll: bitte weniger oder kleinere Bilder verwenden.')};
+const saveSoon=()=>{clearTimeout(tmr);tmr=setTimeout(save,300)};
+let tt=null;function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),3800)}
+/* ---------- Datum, Kosten, Blüte ---------- */
+const pD=s=>{const p=String(s||'2027-03-14').split('-');return Date.UTC(+p[0],+p[1]-1,+p[2])/864e5};
+const dnum=(y,m,d)=>Date.UTC(y,m-1,d)/864e5;
+const fD=n=>{const d=new Date(n*864e5);return d.getUTCDate()+'.'+(d.getUTCMonth()+1)+'.'};
+const yr=()=>new Date(pD(S.start)*864e5).getUTCFullYear();
+const nd=s=>Math.max(1,+s.d||1);
+const visit=i=>{let a=pD(S.start);for(let k=0;k<i;k++)a+=nd(S.stops[k]);return[a,a+nd(S.stops[i])-1]};
+const days=()=>S.stops.reduce((t,s)=>t+nd(s),0);
+const sum=(s,g)=>(s.items||[]).reduce((t,x)=>t+(!g||(g==='R'?(x.g==='R'||x.g==='S'):x.g===g)?(+x.a||0):0),0);
+function cats(){const c={};CATS.forEach(k=>c[k[0]]=0);S.stops.forEach(s=>s.items.forEach(x=>{const g=x.g==='S'?'R':x.g;if(c[g]!=null)c[g]+=(+x.a||0)}));c.F=2*(+S.fl||0);c.P=(c.U+c.E+c.A+c.R+c.F)*(+S.bf||0)/100;return c}
+const grand=()=>{const c=cats();return c.U+c.E+c.A+c.R+c.F+c.P};
+function bw(s){const w=SAK[s.n];if(!w)return null;const y=yr(),sh=+S.shift||0,a=w[0].split('-'),b=w[1].split('-');return[dnum(y,+a[0],+a[1])+sh,dnum(y,+b[0],+b[1])+sh]}
+function bl(i){const s=S.stops[i],w=bw(s);if(!w)return null;const v=visit(i),ov=Math.max(0,Math.min(v[1],w[1])-Math.max(v[0],w[0])+1),len=v[1]-v[0]+1,me=fD(v[0])+'–'+fD(v[1]),b=fD(w[0])+'–'+fD(w[1]);
+if(!ov)return v[1]<w[0]?{k:'early',e:'⏪',l:'Blüte zu früh dran',t:'Zu früh: Die Blüte beginnt dort laut Näherung um den '+fD(w[0])+', ihr seid '+me+' da.'}:{k:'late',e:'⏩',l:'Blüte eher vorbei',t:'Eher vorbei: Die Blüte dort endet laut Näherung um den '+fD(w[1])+', ihr seid '+me+' da.'};
+return ov/len>=.5?{k:'ok',e:'🌸',l:'Blüte passt',t:'Passt: Blüte dort laut Näherung '+b+', ihr seid '+me+' da.'}:{k:'part',e:'🌱',l:'Blüte teilweise',t:'Teilweise: Blüte dort laut Näherung '+b+', ihr seid '+me+' da.'}}
+/* ---------- Routen ---------- */
+let RTC={},pend={},FAIL={};try{RTC=JSON.parse(LS.get('jp3-routes',LS.get('jp2-routes','{}')))||{}}catch(e){}
+const legKey=(A,B)=>A.lat.toFixed(3)+','+A.lon.toFixed(3)+';'+B.lat.toFixed(3)+','+B.lon.toFixed(3);
+function getLeg(A,B){const k=legKey(A,B);if(RTC[k])return RTC[k];if(pend[k]||FAIL[k]||hav(A,B)>500||typeof fetch!=='function')return null;pend[k]=1;
+fetch('https://router.project-osrm.org/route/v1/driving/'+A.lon+','+A.lat+';'+B.lon+','+B.lat+'?overview=simplified&geometries=geojson').then(r=>r.json()).then(j=>{const g=j&&j.routes&&j.routes[0];if(g&&g.geometry&&g.geometry.coordinates){RTC[k]={c:g.geometry.coordinates.map(p=>[+p[1].toFixed(4),+p[0].toFixed(4)]),d:g.distance,t:g.duration};LS.set('jp3-routes',JSON.stringify(RTC))}}).catch(()=>{FAIL[k]=1}).then(()=>{delete pend[k];if(!RTC[k])FAIL[k]=1;onRoute()});return null}
+function leg(i){const A=S.stops[i-1],B=S.stops[i],d=hav(A,B),fl=d>500,rd=ROADS&&!fl?getLeg(A,B):null;const km=rd?rd.d/1000:(fl?d:d*1.3);return{km,fl,rd,h:rd?rd.t/3600:(fl?d/700+2.5:km/SPD)}}
+const legUrl=(a,b)=>'https://www.google.com/maps/dir/?api=1&origin='+a.lat+','+a.lon+'&destination='+b.lat+','+b.lon+'&travelmode=transit';
+function totalKm(){let k=0;for(let i=1;i<S.stops.length;i++){const A=S.stops[i-1],B=S.stops[i],d=hav(A,B),r=RTC[legKey(A,B)];k+=r&&d<=500?r.d/1000:(d>500?d:d*1.3)}return k}
+function onRoute(){drawMap();if(view==='route'&&!openS){const a=document.activeElement;if(!a||a.tagName!=='INPUT')renderPanel()}}
+/* ---------- Ortssuche (OpenStreetMap/Nominatim) ---------- */
+let gq=Promise.resolve(),glast=0;
+function nom(q,bias,n,cb){const u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit='+(n||6)+'&accept-language=de,en&namedetails=1&extratags=1&addressdetails=1&countrycodes=jp&q='+encodeURIComponent(q)+(bias?'&viewbox='+(bias.lon-.7)+','+(bias.lat+.7)+','+(bias.lon+.7)+','+(bias.lat-.7):'');
+gq=gq.then(()=>new Promise(r=>setTimeout(r,Math.max(0,1100-(Date.now()-glast))))).then(()=>{glast=Date.now();return fetch(u)}).then(r=>r.json()).then(j=>{cb(null,Array.isArray(j)?j:[])},e=>{cb(e||new Error('x'),[])}).catch(()=>{})}
+const JP=/[぀-ヿ一-鿿]/;
+function niceName(o){const n=o.namedetails||{};return n['name:de']||n['name:en']||n['name:ja-Latn']||n['name:ja_rm']||n.name||o.name||String(o.display_name||'').split(',')[0]}
+function origName(o){const n=o.namedetails||{};return n.name&&n.name!==niceName(o)&&JP.test(n.name)?n.name:''}
+function areaOf(o){const a=o.address||{};return a.city||a.town||a.village||a.municipality||a.suburb||a.county||''}
+function guessTy(o){const c=o.category||o.class||'',t=o.type||'';if(/restaurant|fast_food|food_court/.test(t))return'R';if(/cafe|bakery|ice_cream/.test(t))return'C';if(/^(bar|pub|biergarten)$/.test(t))return'B';if(/hotel|hostel|guest_house|apartment|ryokan|motel|chalet/.test(t))return'H';if(/public_bath|onsen|hot_spring/.test(t))return'O';if(c==='natural'||/park|garden|nature_reserve|beach|peak|waterfall/.test(t))return'N';if(c==='shop'||t==='marketplace')return'M';if(c==='tourism'||c==='historic'||/place_of_worship|temple|shrine|castle/.test(t))return'S';return'X'}
+function extractInfo(o){const ex=o.extratags||{},ad=o.address||{};const road=[ad.road,ad.house_number].filter(Boolean).join(' ');return{web:ex.website||ex['contact:website']||ex.url||'',hours:ex.opening_hours||'',phone:ex.phone||ex['contact:phone']||'',cuisine:ex.cuisine||'',addr:[road,ad.neighbourhood||ad.suburb||ad.city_district,ad.city||ad.town||ad.village||ad.municipality].filter(Boolean).join(', ')}}
+const fmtH=h=>String(h).replace(/\bSu\b/g,'So').replace(/\bTu\b/g,'Di').replace(/\bWe\b/g,'Mi').replace(/\bTh\b/g,'Do').replace(/\boff\b/g,'geschlossen').replace(/\bPH\b/g,'Feiertage');
+const CU={ramen:'Ramen',sushi:'Sushi',japanese:'Japanisch',noodle:'Nudeln',seafood:'Meeresfrüchte',coffee_shop:'Kaffee',tempura:'Tempura',udon:'Udon',soba:'Soba',yakitori:'Yakitori',okonomiyaki:'Okonomiyaki',regional:'Regional',tonkatsu:'Tonkatsu',izakaya:'Izakaya',curry:'Curry',beef:'Rindfleisch',fish:'Fisch'};
+const cuis=c=>String(c).split(';').map(x=>{x=x.trim();return CU[x]||x.replace(/_/g,' ')}).join(', ');
+function doSearch(kind,q,boxId){const box=$(boxId);if(!box)return;q=q.trim();if(q.length<3){box.innerHTML='';return}box.innerHTML='<p class="mut sm">Suche …</p>';
+const st=S.stops[sel];nom(q+' Japan',kind==='place'&&st?st:null,8,(err,res)=>{if(!$(boxId))return;if(err){box.innerHTML='<p class="mut sm">Ortssuche nicht erreichbar (Internet?).</p>';return}
+const seen={};res=res.filter(o=>{const k=niceName(o)+Math.round(o.lat*500)+Math.round(o.lon*500);if(seen[k])return false;return seen[k]=1});HITS=res;
+let h=res.length?'<p class="mut sm" style="margin:2px 0">Treffer (OpenStreetMap):</p>':'<p class="mut sm">Nichts gefunden. Anderen Namen oder Stadtteil probieren.</p>';
+res.forEach((o,k)=>{const ty=guessTy(o),og=origName(o),a=areaOf(o);h+='<div class="hit"><div>'+(kind==='place'?PI(ty)+' ':'📍 ')+'<b>'+esc(niceName(o))+'</b>'+(og?' <span class="mut">('+esc(og)+')</span>':'')+'<small>'+esc(a)+'</small></div><button class="btn sm2 pri" data-a="hit-'+kind+'" data-k="'+k+'">+ Hinzufügen</button></div>'});
+if(kind==='place')h+='<button class="btn sm2" data-a="hit-manual" data-q="'+esc(q)+'" style="margin-top:6px">Trotzdem ohne Treffer hinzufügen</button>';box.innerHTML=h})}
+function autoGeo(t,x){nom(x.n+' '+t.n.split(' &')[0]+' Japan',t,5,(err,res)=>{if(err||!res||!res.length)return;const r=res.filter(o=>hav(t,{lat:+o.lat,lon:+o.lon})<80)[0];if(!r)return;x.lat=Math.round(+r.lat*1e5)/1e5;x.lon=Math.round(+r.lon*1e5)/1e5;x.info=extractInfo(r);save();phPlace(t,x);if(S.stops[sel]===t){render()}toast('„'+x.n+'“ auf der Karte gesetzt.')})}
+/* ---------- Karte ---------- */
+let MAP=null,LAYER=null,GPS=null,TL_DE,TL_OSM,TL_SAT,SATON=false,placingPl=null;
+function initMap(){
+ if(typeof L==='undefined'){$('lmap').innerHTML='<p class="mut" style="padding:70px 16px">Die Kartenbibliothek konnte nicht geladen werden (keine Internetverbindung?). Reiseplan, Kosten und Blüte funktionieren trotzdem.</p>';return}
+ MAP=L.map('lmap',{zoomControl:false,worldCopyJump:true,preferCanvas:true}).setView([36,136],5);
+ TL_OSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
+ TL_DE=L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap, OSM Deutschland'}).addTo(MAP);
+ let er=0;TL_DE.on('tileerror',()=>{er++;if(er===4&&!SATON){MAP.removeLayer(TL_DE);TL_OSM.addTo(MAP);toast('Deutsche Karte nicht erreichbar, internationale aktiv (Namen evtl. japanisch).')}});
+ TL_SAT=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Esri'});
+ LAYER=L.layerGroup().addTo(MAP);
+ MAP.on('zoomend',drawMap);
+ MAP.on('click',e=>{if(placingPl){const p=S.stops[placingPl.si].pl[placingPl.pi];if(p){p.lat=Math.round(e.latlng.lat*1e5)/1e5;p.lon=Math.round(e.latlng.lng*1e5)/1e5;toast('„'+p.n+'“ auf der Karte gesetzt.');save()}placingPl=null;$('lmap').style.cursor='';if(mobile())sheet(1);render()}});
+ MAP.on('locationfound',e=>{if(GPS)GPS.remove();GPS=L.circleMarker(e.latlng,{radius:8,color:'#1e6fd9'}).addTo(MAP)});
+ MAP.on('locationerror',()=>toast('Standort nicht verfügbar (Freigabe im Browser prüfen).'));
+ if(window.ResizeObserver)new ResizeObserver(()=>MAP.invalidateSize()).observe($('lmap'));
+}
+const ll=s=>[s.lat,s.lon];
+const baseOf=s=>(s.pl||[]).find(x=>x.base&&x.lat!=null)||(s.pl||[]).find(x=>x.ty==='H'&&x.lat!=null);
+function drawMap(){
+ if(!MAP)return;LAYER.clearLayers();const v=S.stops,z=MAP.getZoom();
+ for(let i=1;i<v.length;i++){const A=v[i-1],B=v[i],l=leg(i);
+  if(l.rd)L.polyline(l.rd.c,{color:'#d9472b',weight:4,opacity:.9}).addTo(LAYER);else L.polyline([ll(A),ll(B)],{color:'#d9472b',weight:3,dashArray:'8 7',opacity:.85}).addTo(LAYER);
+  if(z>=6){const mid=l.rd?l.rd.c[Math.floor(l.rd.c.length/2)]:[(A.lat+B.lat)/2,(A.lon+B.lon)/2];L.marker(mid,{icon:L.divIcon({className:'',html:'<span class="rl">'+(l.rd?'🚗 ':l.fl?'✈️ ':'')+Math.round(l.km)+' km · '+ft(l.h)+'</span>',iconSize:[0,0]}),interactive:false,keyboard:false}).addTo(LAYER)}}
+ let nl=0,ok=0,fa=0,lg=0;for(let q=1;q<v.length;q++){const k=legKey(v[q-1],v[q]);if(hav(v[q-1],v[q])>500){lg++;continue}nl++;if(RTC[k])ok++;else if(FAIL[k])fa++}
+ $('rstat').textContent=!v.length?'':!ROADS?'Routen: nur Luftlinie (🛣️ aus)':'Straßenrouten '+ok+'/'+nl+(lg?' · '+lg+' Flug/Bahn als Luftlinie':'')+(fa?' · '+fa+' Abfrage(n) fehlgeschlagen':'')+(ok<nl&&!fa?' (lädt …)':'');
+ const hs=v[sel];let hot=null;
+ if(hs&&!actDay&&z>=8&&(hot=baseOf(hs))){hs.pl.forEach(x=>{if(x===hot||x.ty==='H'||x.lat==null)return;const hd=hav(hot,x),hr=ROADS&&hd<=500?getLeg(hot,x):null;
+  if(hr)L.polyline(hr.c,{color:'#1e6fd9',weight:4,opacity:.85}).addTo(LAYER);else L.polyline([ll(hot),ll(x)],{color:'#1e6fd9',weight:3,dashArray:'6 6',opacity:.8}).addTo(LAYER);
+  if(z>=11){const k=hr?hr.d/1000:hd*1.3,m=hr?hr.c[Math.floor(hr.c.length/2)]:[(hot.lat+x.lat)/2,(hot.lon+x.lon)/2];L.marker(m,{icon:L.divIcon({className:'',html:'<span class="rl hl">'+(k<1?Math.round(k*1000)+' m':k.toFixed(1)+' km')+(hr?' · '+ft(hr.t/3600):'')+'</span>',iconSize:[0,0]}),interactive:false,keyboard:false}).addTo(LAYER)}})}
+ const df=$('dayfl');df.classList.toggle('on',!!actDay);
+ if(actDay&&v[actDay.si]){const c=chainPts(actDay.si,actDay.day),st=chainStat(c.pts);$('dayt').textContent='📅 '+dstr(visit(actDay.si)[0]+actDay.day)+' · '+(c.its.length?(st.km<10?st.km.toFixed(1):Math.round(st.km))+' km · '+ft(st.h):'keine Orte');
+  for(let i=0;i+1<c.pts.length;i++){const a=c.pts[i],b=c.pts[i+1],l=legInfo(a,b);if(l.rd)L.polyline(l.rd.c,{color:'#8a3fc7',weight:5,opacity:.9}).addTo(LAYER);else L.polyline([ll(a),ll(b)],{color:'#8a3fc7',weight:4,dashArray:'7 6',opacity:.9}).addTo(LAYER)}
+  c.its.forEach((x,j)=>L.marker([x.lat,x.lon],{icon:L.divIcon({className:'mkw',html:'<div class="cn">'+(j+1)+'</div>',iconSize:[20,20],iconAnchor:[-4,24]}),interactive:false,keyboard:false,zIndexOffset:900}).addTo(LAYER));
+  if(c.hasBase)L.marker([c.base.lat,c.base.lon],{icon:L.divIcon({className:'mkw',html:'<div class="pp hb" style="--c:#8a3fc7">🛏️</div>',iconSize:[28,28],iconAnchor:[14,14]}),interactive:false,keyboard:false,zIndexOffset:800}).addTo(LAYER)}
+ if(z>=9||actDay)v.forEach((s,si)=>(s.pl||[]).forEach((x,pi)=>{if(x.lat==null||x.lon==null)return;if(actDay&&(si!==actDay.si||dayOf(s,x)!==actDay.day)&&z<9)return;
+  const m=L.marker([x.lat,x.lon],{icon:L.divIcon({className:'mkw',html:'<div class="pp'+(x.ok?' dn':'')+(x===hot?' hb':'')+'" style="--c:'+tg0(s)[2]+'">'+PI(x.ty)+'</div>'+(z>=12?'<span class="mkl" style="top:30px">'+esc(x.n)+'</span>':''),iconSize:[28,28],iconAnchor:[14,14]}),draggable:si===sel&&openS,zIndexOffset:500,title:x.n}).addTo(LAYER);
+  m.on('click',()=>{if(tlDay&&tlDay.si===si&&dayOf(s,x)!==tlDay.day){x.day=tlDay.day;x.ord=1e6;normDay(si,tlDay.day);save();toast('„'+x.n+'“ zu '+dstr(visit(si)[0]+tlDay.day)+' hinzugefügt. Ziehen auf die Zeitachse legt die Uhrzeit fest.');renderPanel();drawMap();return}window.openPlace(si,pi)});
+  const el=m.getElement&&m.getElement();if(el&&tlDay&&tlDay.si===si&&!mobile())el.addEventListener('pointerdown',ev=>{if(ev.button)return;ev.preventDefault();ev.stopPropagation();startDrag(ev,si,pi,PI(x.ty)+' '+x.n,null)});
+  m.on('dragend',()=>{const p=m.getLatLng();x.lat=Math.round(p.lat*1e5)/1e5;x.lon=Math.round(p.lng*1e5)/1e5;save();toast('Position von „'+x.n+'“ gespeichert.');drawMap()})}));
+ v.forEach((s,i)=>{const t=tg0(s),imgs=(s.imgs||[]).slice(0,4);
+  const m=L.marker(ll(s),{icon:L.divIcon({className:'mkw',html:'<div class="mk'+(i===sel?' act':'')+'" style="--c:'+t[2]+'">'+t[0]+'<b>'+(i+1)+'</b></div><span class="mkl">'+esc(s.n)+'</span>',iconSize:[36,36],iconAnchor:[18,18]}),zIndexOffset:i===sel?1000:0,title:s.n}).addTo(LAYER);
+  if(imgs.length)m.bindTooltip('<div class="tip">'+imgs.map(u=>'<img src="'+u+'" alt="">').join('')+'</div>',{direction:'top',offset:[0,-20],opacity:1});
+  m.on('click',()=>openStop(i))})}
+function focusStop(i,zoom){if(!MAP)return;const s=S.stops[i];if(!s)return;const pts=[ll(s)];(s.pl||[]).forEach(x=>{if(x.lat!=null)pts.push([x.lat,x.lon])});
+ const mob=window.innerWidth<=820,pb=mob?$('panel').offsetHeight:0;
+ try{MAP.fitBounds(pts,{paddingTopLeft:[30,60],paddingBottomRight:[mob?30:60,pb+30],maxZoom:zoom||13,animate:true})}catch(e){MAP.setView(ll(s),zoom||11)}}
+function showPt(la,lo){if(!MAP)return;const mob=mobile(),pb=mob?$('panel').offsetHeight:0;try{MAP.fitBounds([[la,lo]],{paddingTopLeft:[30,60],paddingBottomRight:[30,pb+30],maxZoom:Math.max(MAP.getZoom(),15),animate:true})}catch(e){MAP.setView([la,lo],15)}}
+function fitAll(){if(!MAP||!S.stops.length)return;const mob=window.innerWidth<=820,pb=mob?$('panel').offsetHeight:0;try{MAP.fitBounds(S.stops.map(ll),{paddingTopLeft:[30,60],paddingBottomRight:[30,pb+30],maxZoom:9})}catch(e){}}
+/* ---------- Kopf, Navigation, Sheet ---------- */
+function renderTop(){$('vs').innerHTML=Object.keys(PRE).map(k=>'<button class="vc'+(k===RG?' on':'')+'" data-v2="'+k+'">'+SHORT[k]+'</button>').join('');
+ document.querySelectorAll('#bn button').forEach(b=>b.classList.toggle('on',b.dataset.v===view))}
+$('vs').onclick=e=>{const b=e.target.closest('[data-v2]');if(!b||b.dataset.v2===RG)return;save();RG=b.dataset.v2;LS.set('jp3-rg',RG);S=load();sel=-1;openS=false;view='route';placingPl=null;render();fitAll()};
+$('bn').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;if(b.dataset.v==='route')openS=false;view=b.dataset.v;render();$('pbody').scrollTop=0;if(window.innerWidth<=820&&view!=='route')sheet(view==='cal'?2:1)};
+let SH=1;const mobile=()=>window.innerWidth<=820;
+function sheet(n){SH=n;if(!mobile()){$('panel').style.height='';return}const H=$('app').offsetHeight;$('panel').style.height=n===0?'150px':n===1?Math.round(H*.5)+'px':(H-12)+'px'}
+(function(){const h=$('handle'),p=$('panel');let y0=0,h0=0,drag=false,moved=false;
+ h.onpointerdown=e=>{drag=true;moved=false;y0=e.clientY;h0=p.offsetHeight;p.classList.add('drag');try{h.setPointerCapture(e.pointerId)}catch(x){}};
+ h.onpointermove=e=>{if(!drag)return;const d=y0-e.clientY;if(Math.abs(d)>4)moved=true;p.style.height=Math.max(110,Math.min($('app').offsetHeight-12,h0+d))+'px'};
+ const end=()=>{if(!drag)return;drag=false;p.classList.remove('drag');const H=$('app').offsetHeight,cur=p.offsetHeight;if(!moved){sheet((SH+1)%3);return}const t=[150,H*.5,H-12];let b=0;t.forEach((v,i)=>{if(Math.abs(v-cur)<Math.abs(t[b]-cur))b=i});sheet(b);setTimeout(()=>{if(MAP)MAP.invalidateSize()},300)};
+ h.onpointerup=end;h.onpointercancel=end})();
+window.addEventListener('resize',()=>{sheet(SH)});
+/* ---------- Panel ---------- */
+function render(){renderTop();renderPanel();drawMap()}
+function renderPanel(){const b=$('pbody'),st=b.scrollTop;b.innerHTML=view==='home'?vHome():view==='cal'?vCal():view==='budget'?vBudget():view==='bloom'?vBloom():view==='more'?vMore():(openS&&S.stops[sel]?vStop():vRoute());b.scrollTop=st}
+function heroImg(s){return(s.imgs&&s.imgs[0])||(s.ph&&s.ph[0]&&s.ph[0].u)||''}
+function stopHero(s,cls){const im=heroImg(s),t=tg0(s);return im?'background-image:url('+im+')':'background:linear-gradient(135deg,'+t[2]+','+t[3]+')'}
+function vRoute(){const v=S.stops,tot=grand(),d=days(),okc=v.filter((s,i)=>{const b=bl(i);return b&&b.k==='ok'}).length,wc=v.filter((s,i)=>bl(i)).length;
+ let h='<div class="kpis"><div class="kpi"><span class="i">📅</span><b>'+d+' Tage</b><span>'+fD(pD(S.start))+'–'+fD(pD(S.start)+d-1)+'</span></div><div class="kpi"><span class="i">💶</span><b>'+eur(tot)+'</b><span>'+eur(tot/2)+' pro Person</span></div><div class="kpi"><span class="i">🛣️</span><b>ca. '+Math.round(totalKm()).toLocaleString('de-AT')+' km</b><span>'+v.length+' Ziele</span></div><div class="kpi"><span class="i">🌸</span><b>'+okc+' von '+wc+'</b><span>Ziele mit Blüte-Treffer</span></div></div>';
+ if(S.w)h+='<details class="card"><summary><b>💡 Idee hinter dieser Variante</b></summary><p class="sm" style="margin:8px 0 0">'+esc(S.w)+'</p></details>';
+ h+='<div class="ribbon">'+v.map((s,i)=>{const t=tg0(s);return'<div style="flex:'+nd(s)+';background:linear-gradient(160deg,'+t[2]+','+t[3]+')" data-a="open" data-i="'+i+'" title="'+esc(s.n)+'"><i>'+t[0]+'</i>'+nd(s)+'d</div>'}).join('')+'</div>';
+ v.forEach((s,i)=>{if(i>0){const l=leg(i);h+='<div class="leg">'+(l.rd?'🚗':l.fl?'✈️':'🚆')+' ca. '+Math.round(l.km)+' km · '+ft(l.h)+' <a href="'+legUrl(v[i-1],s)+'" target="_blank" rel="noopener">Google Maps</a></div>'}
+  const t=tg0(s),vi=visit(i),b=bl(i),np=(s.pl||[]).length;
+  h+='<div class="sc'+(i===sel?' act':'')+'" data-a="open" data-i="'+i+'"><div class="hero" style="'+stopHero(s)+'">'+(heroImg(s)?'':t[0])+'<b>'+(i+1)+'</b></div><div class="sb"><strong>'+esc(s.n)+'</strong><div class="mut sm">'+fD(vi[0])+'–'+fD(vi[1])+' · '+nd(s)+' Nächte</div><div class="row" style="gap:5px;margin-top:5px"><span class="badge">💶 '+eur(sum(s))+'</span>'+(np?'<span class="badge">📍 '+np+'</span>':'')+(b?'<span class="badge '+b.k+'">'+b.e+' '+b.l+'</span>':'')+'</div></div><span class="go">›</span></div>'});
+ const used=new Set(v.map(s=>s.n)),more=Object.keys(ST).filter(n=>!used.has(n));
+ h+='<h3>➕ Ziel hinzufügen</h3>'+(more.length?'<div class="chips" style="margin-bottom:8px">'+more.map(n=>'<button class="chip add" data-a="addknown" data-n="'+esc(n)+'">'+(TG[(ST[n][3]||'K')[0]]||TG.K)[0]+' '+esc(n)+'</button>').join('')+'</div>':'')+
+ '<div class="srch" style="position:static;padding:0"><input type="text" id="sq" placeholder="🔍 Anderes Ziel suchen, z. B. Nikko, Sapporo …" autocomplete="off"><button class="btn" data-a="sgo">Suchen</button></div><div id="sres"></div>';
+ return h}
+function vStop(){const s=S.stops[sel],i=sel,t=tg0(s),vi=visit(i),b=bl(i);
+ let h='<button class="back" data-a="back">‹ Alle Ziele</button><div class="hh" style="'+stopHero(s)+'"><span class="em">'+(heroImg(s)?'':t[0])+'</span><input type="text" data-f="sn" value="'+esc(s.n)+'" aria-label="Name"><div class="sub">Ziel '+(i+1)+' von '+S.stops.length+' · '+fD(vi[0])+'–'+fD(vi[1])+' · <span id="hc">'+eur(sum(s))+'</span></div></div>';
+ h+='<div class="row" style="margin-bottom:8px"><div class="step"><button data-a="nights" data-d="-1">−</button><span>'+nd(s)+' Nächte</span><button data-a="nights" data-d="1">+</button></div><button class="btn sm2" data-a="mv" data-d="-1" title="Früher in der Reise"'+(i===0?' disabled':'')+'>↑</button><button class="btn sm2" data-a="mv" data-d="1" title="Später in der Reise"'+(i===S.stops.length-1?' disabled':'')+'>↓</button><button class="btn sm2" data-a="zoomstop">🎯 Karte</button><button class="btn sm2" data-a="delstop" style="margin-left:auto">🗑️</button></div>';
+ h+='<div class="chips">'+Object.keys(TG).map(k=>'<button class="chip'+((s.tg||'').includes(k)?' on':'')+'" data-a="tag" data-t="'+k+'">'+TG[k][0]+' '+TG[k][1]+'</button>').join('')+'</div>';
+ h+='<div class="tabs">'+[['ov','Überblick'],['pl','Orte '+(s.pl.length?'('+s.pl.length+')':'')],['ko','Kosten'],['nt','Notizen']].map(x=>'<button data-a="sub" data-s="'+x[0]+'" class="'+(sub===x[0]?'on':'')+'">'+x[1]+'</button>').join('')+'</div>';
+ h+='<div id="sbody">'+(sub==='pl'?sPl(s):sub==='ko'?sKo(s):sub==='nt'?sNt(s):sOv(s,b))+'</div>';return h}
+function sOv(s,b){const lines=x=>String(x||'').split('\n').map(a=>a.trim()).filter(Boolean);let h='';
+ if(b)h+='<div class="bloom '+b.k+'">'+b.e+' '+esc(b.t)+'</div>';
+ if(s.note)h+='<p style="margin:0 0 8px">'+esc(s.note).replace(/\n/g,'<br>')+'</p>';
+ if(lines(s.food).length)h+='<h3>🍜 Das solltet ihr essen</h3><div class="chips">'+lines(s.food).map(x=>'<span class="chip">'+esc(x)+'</span>').join('')+'</div>';
+ if(lines(s.sp).length)h+='<h3>🌸 Kirschblüten-Spots</h3><div class="chips">'+lines(s.sp).map(x=>'<span class="chip">'+esc(x)+'</span>').join('')+'</div>';
+ const i=S.stops.indexOf(s);h+='<div class="row" style="margin-top:14px"><a class="btn" target="_blank" rel="noopener" href="'+gm(s.lat,s.lon)+'">📍 Google Maps</a><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q='+encodeURIComponent(s.n+' Japan')+'">🖼️ Bilder suchen</a>'+(i>0?'<a class="btn" target="_blank" rel="noopener" href="'+legUrl(S.stops[i-1],s)+'">🗺️ Route vom vorherigen Ziel</a>':'')+'</div>';
+ h+='<p class="mut sm" style="margin-top:10px">Tipp: Der Pin dieses Ziels lässt sich auf der Karte ziehen, wenn dieses Ziel offen ist. Unter „Orte“ sammelt ihr Restaurants, Sehenswürdigkeiten und die Unterkunft.</p>';return h}
+function sPl(s){let h='<div class="srch"><input type="text" id="q" placeholder="🔍 Ort suchen, z. B. Fushimi Inari, Ichiran, Hotel …" autocomplete="off"><button class="btn" data-a="qgo">Suchen</button></div><div id="qres"></div>';
+ const sg=(SUG[s.n]||[]).filter(g=>!s.pl.some(x=>x.n===g[1]));if(sg.length)h+='<p class="mut sm" style="margin:8px 0 4px">Vorschläge für dieses Ziel:</p><div class="chips">'+sg.map((g,k)=>'<button class="chip add" data-a="sug" data-k="'+k+'">+ '+PI(g[0])+' '+esc(g[1])+'</button>').join('')+'</div>';
+ if(!s.pl.length)h+='<p class="mut" style="margin-top:14px">Noch keine Orte. Sucht oben nach einem Restaurant, einer Sehenswürdigkeit oder eurer Unterkunft. Mit „Hinzufügen“ landet der Ort direkt auf der Karte.</p>';
+ if(s.pl.some(x=>x.ty==='H'&&x.lat!=null))h+='<p class="sm" style="margin:12px 0 0;color:var(--blue)">🔵 Von der Basis-Unterkunft (⭐) zeigt die Karte blaue Wege zu allen Orten dieses Ziels (ab Zoom 8).</p>';
+ PT.forEach(tp=>{const idx=[];s.pl.forEach((x,k)=>{if(x.ty===tp[0])idx.push(k)});if(!idx.length)return;h+='<h3>'+tp[1]+' '+tp[2]+' <span class="mut sm">('+idx.length+')</span></h3>'+idx.map(k=>plCard(s,k)).join('')});return h}
+function plCard(s,k){const x=s.pl[k],o=!!openPl[sel+':'+k],inf=x.info||{},w=safeUrl(inf.web),isH=x.ty==='H',bs=baseOf(s)===x;
+ let h='<div class="pc'+(x.ok?' dn':'')+'" data-i="'+k+'"><div class="top">'+(phList(x)[0]?'<img class="pth" src="'+esc(phList(x)[0].u)+'" alt="" loading="lazy" data-a="lb" data-si="'+sel+'" data-pi="'+k+'" data-k="0">':'<span class="pic">'+PI(x.ty)+'</span>')+'<div style="flex:1;min-width:0"><input type="text" class="pn" data-f="pn" data-i="'+k+'" value="'+esc(x.n)+'" style="width:100%">'+(dayOf(s,x)!==null?'<div class="sm" style="color:#8a3fc7;font-weight:700">📅 '+dstr(visit(sel)[0]+dayOf(s,x))+(x.tm?' · '+esc(x.tm):'')+'</div>':'')+(x.t||inf.hours?'<div class="mut sm">'+(inf.hours?'⏰ '+esc(fmtH(inf.hours).split(';')[0]):'')+(x.t&&inf.hours?' · ':'')+esc(x.t||'')+'</div>':'')+'</div>'+
+ (x.lat!=null?'<button class="ib" data-a="pl-go" data-i="'+k+'" title="Auf der Karte zeigen">🎯</button>':'<button class="ib" data-a="pl-pin" data-i="'+k+'" title="Per Klick auf der Karte setzen">📌</button>')+
+ '<button class="ib'+(x.ok?' on':'')+'" data-a="pl-ok" data-i="'+k+'" title="Erledigt oder gebucht">✓</button><button class="ib" data-a="pl-more" data-i="'+k+'" title="Mehr">'+(o?'▴':'⋯')+'</button></div>';
+ if(o){h+='<div class="more">'+phStrip(s,k,x)+'<select data-f="pty" data-i="'+k+'">'+PT.map(t=>'<option value="'+t[0]+'"'+(t[0]===x.ty?' selected':'')+'>'+t[1]+' '+t[2]+'</option>').join('')+'</select><input type="text" data-f="pt" data-i="'+k+'" placeholder="Notiz (Preis, Reservierung …)" value="'+esc(x.t||'')+'"><div class="row"><select data-f="pday" data-i="'+k+'" style="flex:1"><option value="">📅 nicht eingeplant</option>'+Array.from({length:nd(s)},(_,d)=>'<option value="'+d+'"'+(dayOf(s,x)===d?' selected':'')+'>📅 '+dstr(visit(sel)[0]+d)+'</option>').join('')+'</select></div><div class="row"><select data-f="pbk" data-i="'+k+'" style="flex:1"><option value="0">Keine Reservierung nötig</option><option value="1"'+(x.bk===1?' selected':'')+'>🟡 Reservierung/Ticket nötig, offen</option><option value="2"'+(x.bk===2?' selected':'')+'>🟡 reserviert</option><option value="3"'+(x.bk===3?' selected':'')+'>✅ gebucht</option></select></div>'+(x.bk?'<input type="text" data-f="pbn" data-i="'+k+'" placeholder="Bestätigungsnr., Uhrzeit, Preis …" value="'+esc(x.bn||'')+'">':'')+'<div class="row"><label class="sm mut" style="flex:1">Von<input type="time" data-f="ptm" data-i="'+k+'" value="'+esc(x.tm||'')+'"></label><label class="sm mut" style="flex:1">Bis<input type="time" data-f="pte" data-i="'+k+'" value="'+(s2t(x.tm)!==null?t2s(Math.min(1439,s2t(x.tm)+(x.dur||60))):'')+'"></label></div>';
+  if(inf.addr)h+='<div class="sm">📍 '+esc(inf.addr)+'</div>';if(inf.hours)h+='<div class="sm">⏰ '+esc(fmtH(inf.hours))+'</div>';if(inf.phone)h+='<div class="sm">📞 '+esc(inf.phone)+'</div>';if(inf.cuisine)h+='<div class="sm">🍽️ '+esc(cuis(inf.cuisine))+'</div>';
+  if(!inf.addr&&!inf.hours&&!inf.web&&!inf.phone)h+='<div class="mut sm">Keine Detailinfos hinterlegt (OpenStreetMap kennt sie nicht). Notiz oben ergänzen.</div>';
+  h+='<div class="row">'+(w?'<a class="btn sm2" href="'+esc(w)+'" target="_blank" rel="noopener">🌐 Website</a>':'')+'<a class="btn sm2" target="_blank" rel="noopener" href="'+(x.lat!=null?gm(x.lat,x.lon):'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(x.n+' '+s.n+' Japan'))+'">Google Maps</a>'+(x.lat!=null?'<button class="btn sm2" data-a="pl-pin" data-i="'+k+'">📌 Neu setzen</button>':'')+(isH&&x.lat!=null?'<button class="btn sm2'+(bs?' pri':'')+'" data-a="pl-base" data-i="'+k+'">⭐ '+(bs?'Basis-Unterkunft':'Als Basis nutzen')+'</button>':'')+'<button class="btn sm2" data-a="pl-del" data-i="'+k+'" style="margin-left:auto">🗑️</button></div></div>'}
+ return h+'</div>'}
+function sKo(s){let h='';const cs={};s.items.forEach(x=>{const g=x.g==='S'?'R':x.g;cs[g]=(cs[g]||0)+(+x.a||0)});
+ s.items.forEach((x,k)=>{h+='<div class="it"><select data-f="ig" data-i="'+k+'">'+GR.map(g=>'<option value="'+g[0]+'"'+(g[0]===x.g?' selected':'')+'>'+g[1].split(' ')[0]+'</option>').join('')+'</select><input type="text" data-f="it" data-i="'+k+'" value="'+esc(x.t)+'"><input type="number" data-f="ia" data-i="'+k+'" min="0" value="'+(+x.a||0)+'"><button class="x" data-a="it-del" data-i="'+k+'">×</button></div>'});
+ h+='<button class="btn sm2" data-a="it-add">+ Posten</button><h3>Summe <span id="ks" style="margin-left:auto">'+eur(sum(s))+'</span></h3>';
+ const tot=sum(s)||1;h+='<div class="bar">'+CATS.slice(0,4).map(c=>'<i style="width:'+(100*(cs[c[0]]||0)/tot)+'%;background:'+c[3]+'" title="'+c[2]+'"></i>').join('')+'</div><div class="legend">'+CATS.slice(0,4).map(c=>cs[c[0]]?'<div><i style="background:'+c[3]+'"></i>'+c[1]+' '+c[2]+'<span>'+eur(cs[c[0]])+'</span></div>':'').join('')+'</div><p class="mut sm">Alles Schätzungen für zwei Personen, einfach überschreiben.</p>';return h}
+function sNt(s){return'<label class="sm mut">Beschreibung und Notizen</label><textarea data-f="note" placeholder="Hotels, Ideen, Buchungsnummern …">'+esc(s.note)+'</textarea><label class="sm mut">🍜 Typisches Essen (ein Gericht pro Zeile)</label><textarea data-f="food">'+esc(s.food)+'</textarea><label class="sm mut">🌸 Kirschblüten-Spots (ein Ort pro Zeile)</label><textarea data-f="sp">'+esc(s.sp)+'</textarea><h3>🖼️ Bilder <span class="mut sm">(erscheinen beim Überfahren des Pins auf der Karte)</span></h3><div class="imgs">'+s.imgs.map((u,k)=>'<div style="background-image:url('+u+')"><b data-a="img-del" data-k="'+k+'">×</b></div>').join('')+'</div><label class="btn" style="margin-top:8px">+ Bilder hinzufügen<input type="file" id="fi" accept="image/*" multiple hidden></label>'}
+function vBudget(){const c=cats(),tot=grand()||1;let acc=0;
+ const arcs=CATS.map(k=>{const p=100*c[k[0]]/tot,a='<circle r="15.9155" cx="21" cy="21" fill="none" stroke="'+k[3]+'" stroke-width="6.5" stroke-dasharray="'+p+' '+(100-p)+'" stroke-dashoffset="'+(25-acc)+'"/>';acc+=p;return a}).join('');
+ let h='<h2>💶 Budget</h2><div class="card"><svg class="donut" viewBox="0 0 42 42"><circle r="15.9155" cx="21" cy="21" fill="none" stroke="var(--soft)" stroke-width="6.5"/>'+arcs+'<text x="21" y="20.5" font-size="4.6" font-weight="800">'+eur(grand())+'</text><text x="21" y="25.5" font-size="2.6" fill="var(--mut)" style="fill:var(--mut)">'+eur(grand()/2)+' pro Person</text></svg><div class="legend">'+CATS.map(k=>'<div><i style="background:'+k[3]+'"></i>'+k[1]+' '+k[2]+'<span>'+eur(c[k[0]])+'</span></div>').join('')+'</div></div>';
+ const mx=Math.max(1,...S.stops.map(s=>sum(s)));
+ h+='<div class="card"><h3 style="margin-top:0">Kosten pro Ziel</h3>'+S.stops.map((s,i)=>{const t=tg0(s);return'<div style="margin:7px 0;cursor:pointer" data-a="open" data-i="'+i+'"><div class="row" style="justify-content:space-between;font-size:.86rem"><span>'+t[0]+' '+esc(s.n)+'</span><b>'+eur(sum(s))+'</b></div><div class="bar" style="height:10px"><i style="width:'+(100*sum(s)/mx)+'%;background:'+t[2]+'"></i></div></div>'}).join('')+'</div>';
+ h+='<div class="card"><h3 style="margin-top:0">Pauschalen</h3><label class="sm mut">Langstreckenflug pro Person (€), zwei Personen</label><input type="number" min="0" data-f="gfl" value="'+(+S.fl||0)+'"><label class="sm mut" style="display:block;margin-top:8px">Puffer in Prozent</label><input type="number" min="0" data-f="gbf" value="'+(+S.bf||0)+'"><p class="mut sm">Pro Tag: ca. '+eur(grand()/Math.max(1,days()))+' für zwei. Einzelposten ändert ihr im jeweiligen Ziel unter „Kosten“.</p></div>';return h}
+function vBloom(){const v=S.stops;let h='<h2>🌸 Kirschblüten-Check</h2><div class="card"><div class="row"><label class="sm mut" style="flex:1">Reisestart<input type="date" data-f="start" value="'+esc(S.start)+'"></label><label class="sm mut" style="flex:1">Blüte früher (−) / später (+), Tage<input type="number" step="1" data-f="shift" value="'+(+S.shift||0)+'"></label></div><div class="row" style="margin-top:8px"><button class="btn sm2" data-a="shift" data-n="-7">Früh (−7)</button><button class="btn sm2" data-a="shift" data-n="0">Durchschnitt (0)</button><button class="btn sm2" data-a="shift" data-n="5">Spät (+5)</button></div></div>';
+ const rows=v.map((s,i)=>({s,i,w:bw(s),vi:visit(i)}));let mn=1e9,mxx=0;rows.forEach(r=>{mn=Math.min(mn,r.vi[0]);mxx=Math.max(mxx,r.vi[1]);if(r.w){mn=Math.min(mn,r.w[0]);mxx=Math.max(mxx,r.w[1])}});mn-=2;mxx+=2;const sp=mxx-mn,pc=x=>(100*(x-mn)/sp).toFixed(1)+'%';
+ h+='<div class="card"><div class="row sm" style="gap:12px;margin-bottom:6px"><span><i style="display:inline-block;width:14px;height:10px;background:#f6a5b8aa;border:1px solid #e0708f;border-radius:3px"></i> Blüte (Näherung)</span><span><i style="display:inline-block;width:14px;height:6px;background:#2b3a67;border-radius:3px"></i> Euer Aufenthalt</span></div>';
+ const ticks=[];for(let d=Math.ceil(mn/7)*7;d<=mxx;d+=7)ticks.push(d);
+ h+='<div class="axis"><div></div><div>'+ticks.map(d=>'<span style="left:'+pc(d)+'">'+fD(d)+'</span>').join('')+'</div></div>';
+ h+=rows.map(r=>'<div class="tlr" data-a="open" data-i="'+r.i+'" style="cursor:pointer"><span>'+tg0(r.s)[0]+' '+esc(r.s.n.split(' &')[0])+'</span><div class="t">'+(r.w?'<i class="b" style="left:'+pc(r.w[0])+';width:'+(100*(r.w[1]-r.w[0]+1)/sp)+'%"></i>':'')+'<i class="v" style="left:'+pc(r.vi[0])+';width:'+(100*(r.vi[1]-r.vi[0]+1)/sp)+'%"></i></div></div>').join('')+'</div>';
+ h+='<div class="card">'+v.map((s,i)=>{const b=bl(i);return b?'<div class="bloom '+b.k+'"><b>'+esc(s.n)+'</b><br>'+b.e+' '+esc(b.t)+'</div>':''}).join('')+'</div>';
+ h+='<p class="mut sm">Die Blütezeiten sind meine Näherung aus Durchschnittswerten (WanderWeib, Japan Meteorological Agency). Eine offizielle Prognose für 2027 gibt es erst ab etwa Dezember. Dann hier mit „Blüte früher/später“ anpassen. <a href="https://wanderweib.de/tipps-kirschblueten-kalender-vorhersage-japan/#Kirschblueten-Vorhersage" target="_blank" rel="noopener">Aktuelle Prognose bei WanderWeib</a>.</p>';return h}
+function planText(){let t=S.title+'\n'+fD(pD(S.start))+' · '+days()+' Tage · ca. '+eur(grand())+' für zwei\n';S.stops.forEach((s,i)=>{const vi=visit(i);t+='\n'+(i+1)+'. '+s.n+' ('+fD(vi[0])+'–'+fD(vi[1])+', '+nd(s)+' Nächte) · '+eur(sum(s))+'\n';(s.pl||[]).forEach(x=>{t+='   '+PI(x.ty)+' '+x.n+(x.t?' ('+x.t+')':'')+'\n'})});return t}
+function gmRoute(){return'https://www.google.com/maps/dir/'+S.stops.map(s=>s.lat+','+s.lon).join('/')+'/'}
+function b64(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o))))}
+function shareLink(){const o=JSON.parse(JSON.stringify(S));o.stops.forEach(s=>{s.imgs=[];delete s.ph;s.pl.forEach(x=>{delete x.info;delete x.ph;x.imgs=[]})});return location.origin+location.pathname+'#p='+encodeURIComponent(b64({rg:RG,s:o}))}
+function copy(t,m){const done=()=>toast(m||'Kopiert.');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>fb());else fb();function fb(){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(e){toast('Kopieren nicht möglich.')}a.remove()}}
+function vMore(){return'<h2>⚙️ Mehr</h2><div class="card"><h3 style="margin-top:0">📤 Teilen</h3><div class="row"><button class="btn pri" data-a="share">Plan teilen (WhatsApp …)</button><button class="btn" data-a="copylink">🔗 Plan als Link kopieren</button><button class="btn" data-a="copytext">📋 Als Text kopieren</button></div><p class="mut sm">Der Link enthält euren Plan (ohne Bilder). Wer ihn öffnet, kann ihn laden und danach alles ändern. Jedes Gerät speichert nur seinen eigenen Stand.</p></div>'+
+'<div class="card"><h3 style="margin-top:0">📄 Reiseunterlage</h3><div class="row"><button class="btn pri" data-a="doc">Ansehen, drucken oder als Datei speichern</button></div><p class="mut sm">Tagesplan, Adressen, Buchungen, Notfallnummern, Texte zum Zeigen. Funktioniert ohne Internet.</p></div><div class="card"><h3 style="margin-top:0">🗺️ Karte</h3><div class="row"><a class="btn" href="'+gmRoute()+'" target="_blank" rel="noopener">Ganze Reise in Google Maps</a></div><label class="row sm" style="margin-top:10px"><input type="checkbox" data-f="roads"'+(ROADS?' checked':'')+' style="width:auto"> Straßenrouten anzeigen (Auto, bis 500 km). Aus = nur Luftlinie.</label></div>'+
+'<div class="card"><h3 style="margin-top:0">💾 Sicherung</h3><div class="row"><button class="btn" data-a="ics">📆 Kalenderdatei (.ics)</button><button class="btn" data-a="export">Datei sichern</button><label class="btn">Datei laden<input type="file" id="fj" accept=".json,application/json" hidden></label></div></div>'+
+'<div class="card"><h3 style="margin-top:0">✏️ Reise</h3><label class="sm mut">Titel</label><input type="text" data-f="title" value="'+esc(S.title)+'"><div class="row" style="margin-top:10px"><button class="btn" data-a="reset">Diese Variante zurücksetzen</button></div></div>'+
+'<p class="mut sm">Karte: © OpenStreetMap-Mitwirkende (OSM Deutschland), Satellit: Esri. Routen: OSRM. Ortssuche: Nominatim. Alle Eingaben bleiben auf diesem Gerät. Auf dem Handy: im Browser „Zum Startbildschirm hinzufügen“, dann läuft die App wie eine normale App und merkt sich Kartenausschnitte offline.</p>'}
+/* ---------- Aktionen ---------- */
+function openStop(i){sel=i;openS=true;view='route';sub='ov';phStopPlaces(S.stops[i]);render();$('pbody').scrollTop=0;focusStop(i,11);if(mobile()&&SH===0)sheet(1)}
+window.openPlace=(si,pi)=>{const s=S.stops[si],x=s&&s.pl[pi];if(!x)return false;sel=si;openS=true;view='route';sub='pl';openPl[si+':'+pi]=true;render();if(mobile())sheet(1);if(x.lat!=null)showPt(x.lat,x.lon);setTimeout(()=>{const e=document.querySelector('.pc[data-i="'+pi+'"]');if(e){e.scrollIntoView({block:'start',behavior:'smooth'});e.classList.add('flash')}},120);return false};
+function addStop(n,la,lo,tags){const base={id:'s'+Date.now(),n,d:2,lat:la,lon:lo,note:'',tg:tags||'K',food:FOOD[n]||'',sp:SPOT[n]||'',pl:[],imgs:[],items:[{g:'U',t:'Doppelzimmer, 2 Nächte à 110 €',a:220},{g:'E',t:'2 Tage × 2 Personen à 42 €',a:168},{g:'A',t:'Aktivitäten und Eintritte',a:50},{g:'R',t:'Anreise vor Ort',a:60}]};base.bk=defBk(1);S.stops.push(base);sel=S.stops.length-1;save();phStop(base);openStop(sel);toast('„'+n+'“ als Ziel hinzugefügt.')}
+function addPlace(s,np,fly){s.pl.push(np);save();phPlace(s,np);render();if(fly&&MAP&&np.lat!=null)MAP.flyTo([np.lat,np.lon],15,{duration:.8})}
+function act(a,el){const s=S.stops[sel],i=+el.dataset.i,d=el.dataset;
+ switch(a){
+ case'open':openStop(i);break;
+ case'back':openS=false;render();break;
+ case'addknown':{const n=d.n,A=ST[n];addStop(n,A[0],A[1],A[3]);const x=S.stops[sel];x.note=A[2];x.items[0].a=2*A[4];x.items[0].t='Doppelzimmer, 2 Nächte à '+A[4]+' €';x.items[1].a=4*A[5];x.items[2].a=A[6];x.items[3].a=A[7];save();render();break}
+ case'sgo':doSearch('stop',$('sq').value,'sres');break;
+ case'hit-stop':{const o=HITS[+d.k];if(o)addStop(niceName(o),Math.round(+o.lat*1e5)/1e5,Math.round(+o.lon*1e5)/1e5,'K');break}
+ case'nights':s.d=Math.max(1,nd(s)+(+d.d));save();render();break;
+ case'mv':{const j=sel+(+d.d);if(j<0||j>=S.stops.length)break;const t=S.stops[j];S.stops[j]=s;S.stops[sel]=t;sel=j;save();render();break}
+ case'zoomstop':focusStop(sel,13);if(mobile())sheet(0);break;
+ case'delstop':if(confirm('Ziel „'+s.n+'“ löschen?')){S.stops.splice(sel,1);sel=-1;openS=false;save();render();fitAll()}break;
+ case'tag':{const t=d.t;s.tg=(s.tg||'').includes(t)?(s.tg||'').replace(t,''):(s.tg||'')+t;save();render();break}
+ case'sub':sub=d.s;renderPanel();break;
+ case'qgo':doSearch('place',$('q').value,'qres');break;
+ case'hit-place':{const o=HITS[+d.k];if(!o)break;const ty=guessTy(o);addPlace(s,{ty,n:niceName(o),jp:origName(o)||undefined,t:'',ok:0,lat:Math.round(+o.lat*1e5)/1e5,lon:Math.round(+o.lon*1e5)/1e5,info:extractInfo(o)},true);toast('„'+niceName(o)+'“ hinzugefügt und auf der Karte gesetzt.');break}
+ case'hit-manual':{const np={ty:'X',n:d.q,t:'',ok:0};addPlace(s,np);autoGeo(s,np);break}
+ case'sug':{const g=(SUG[s.n]||[]).filter(g=>!s.pl.some(x=>x.n===g[1]))[+d.k];if(!g)break;const np={ty:g[0],n:g[1],t:'',ok:0};addPlace(s,np);autoGeo(s,np);break}
+ case'pl-ok':s.pl[i].ok=s.pl[i].ok?0:1;save();render();break;
+ case'pl-go':{const x=s.pl[i];if(MAP&&x.lat!=null){MAP.flyTo([x.lat,x.lon],16,{duration:.8});if(mobile())sheet(0)}break}
+ case'pl-pin':placingPl={si:sel,pi:i};$('lmap').style.cursor='crosshair';toast('Tippt auf die Karte, um „'+s.pl[i].n+'“ zu setzen.');if(mobile())sheet(0);break;
+ case'pl-more':openPl[sel+':'+i]=!openPl[sel+':'+i];renderPanel();break;
+ case'pl-del':if(confirm('„'+s.pl[i].n+'“ entfernen?')){s.pl.splice(i,1);openPl={};save();render()}break;
+ case'pl-base':s.pl.forEach(x=>{delete x.base});s.pl[i].base=1;save();render();break;
+ case'it-add':s.items.push({g:'S',t:'',a:0});save();renderPanel();break;
+ case'it-del':s.items.splice(i,1);save();renderPanel();break;
+ case'lb':{const q=phList(S.stops[+d.si].pl[+d.pi])[+d.k];showLb(q);break}
+ case'ph-del':{const x=s.pl[i];x.imgs.splice(+d.k,1);save();renderPanel();break}
+ case'ph-find':{const x=s.pl[i];toast('Suche Fotos …');phPlace(s,x,true);break}
+ case'img-del':s.imgs.splice(+d.k,1);save();render();break;
+ case'shift':S.shift=+d.n;save();render();break;
+ case'cal-ed':{const k=d.si+':'+d.pi;calEd=calEd===k?null:k;renderPanel();break}
+ case'pl-open':window.openPlace(+d.si,+d.pi);break;
+ case'cal-day':{const e=$('d-'+d.si+'-'+d.day);if(e){e.scrollIntoView({block:'start',behavior:'smooth'});e.classList.add('flash');setTimeout(()=>e.classList.remove('flash'),2100)}break}
+ case'cal-map':{const si=+d.si,dy=+d.day;if(actDay&&actDay.si===si&&actDay.day===dy){actDay=null}else{actDay={si,day:dy};sel=si}render();if(actDay&&MAP){const c=chainPts(si,dy),pts=c.pts.map(ll);try{const mob=mobile();if(mob)sheet(0);MAP.fitBounds(pts,{paddingTopLeft:[40,70],paddingBottomRight:[40,(mob?150:0)+40],maxZoom:15})}catch(e){}}break}
+ case'tl-toggle':{const si=+d.si,dy=+d.day;if(tlDay&&tlDay.si===si&&tlDay.day===dy){tlDay=null}else{tlDay={si,day:dy};actDay={si,day:dy};sel=si}render();break}
+ case'tl-un':{const q=S.stops[+d.si].pl[+d.pi];delete q.tm;delete q.dur;reorderByTime(+d.si,q.day);save();render();break}
+ case'bk-cyc':{if(d.g==='fb')S.fb[i].s=S.fb[i].s%3+1;else if(d.g==='sb'){const b=S.stops[+d.si].bk[i];b.s=b.s%3+1}else{const x=S.stops[+d.si].pl[i];x.bk=x.bk%3+1}save();renderPanel();break}
+ case'bk-del':{if(d.g==='fb')S.fb.splice(i,1);else if(d.g==='sb')S.stops[+d.si].bk.splice(i,1);else{S.stops[+d.si].pl[i].bk=0}save();renderPanel();break}
+ case'bk-add':{const t=prompt('Was muss gebucht werden? (z. B. Rail Pass, Reiseversicherung, Pocket-WiFi)');if(t&&t.trim()){S.fb.push({t:t.trim(),s:1,n:''});save();bkMore=true;renderPanel()}break}
+ case'bk-more':bkMore=!bkMore;renderPanel();break;
+ case'home-plan':{view='cal';tlDay={si:+d.si,day:+d.day};actDay={si:+d.si,day:+d.day};sel=+d.si;render();setTimeout(()=>{const e=$('d-'+d.si+'-'+d.day);if(e)e.scrollIntoView({block:'start',behavior:'smooth'})},60);if(mobile())sheet(2);break}
+ case'doc':openDoc();break;
+ case'cal-opt':optimize(+d.si,+d.day);break;
+ case'ics':{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([icsText()],{type:'text/calendar'}));a.download='japan-reise.ics';a.click();toast('Kalenderdatei erstellt. Öffnen und in euren Kalender importieren.');break}
+ case'share':{const txt=planText()+'\nPlan öffnen: '+shareLink();if(navigator.share)navigator.share({title:S.title,text:txt}).catch(()=>{});else copy(txt,'Plan kopiert, jetzt in WhatsApp einfügen.');break}
+ case'copylink':copy(shareLink(),'Link kopiert.');break;
+ case'copytext':copy(planText(),'Plan als Text kopiert.');break;
+ case'export':{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({rg:RG,s:S})],{type:'application/json'}));a.download='japan-plan.json';a.click();break}
+ case'reset':if(confirm('Diese Variante auf den Vorschlag zurücksetzen? Eure Änderungen gehen verloren.')){S=mk(RG);sel=-1;openS=false;save();render();fitAll()}break;
+ }}
+$('pbody').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;if(e.target.tagName==='A')return;act(b.dataset.a,b)};
+function field(t){const f=t.dataset.f,s=S.stops[sel],i=+t.dataset.i;
+ switch(f){
+ case'sn':s.n=t.value;saveSoon();drawMap();break;
+ case'pn':s.pl[i].n=t.value;saveSoon();break;
+ case'pt':s.pl[i].t=t.value;saveSoon();break;
+ case'pty':s.pl[i].ty=t.value;save();render();break;
+ case'it':s.items[i].t=t.value;saveSoon();break;
+ case'ia':s.items[i].a=+t.value||0;saveSoon();if($('ks'))$('ks').textContent=eur(sum(s));break;
+ case'ig':s.items[i].g=t.value;save();renderPanel();break;
+ case'note':s.note=t.value;saveSoon();break;
+ case'food':s.food=t.value;saveSoon();break;
+ case'sp':s.sp=t.value;saveSoon();break;
+ case'gfl':S.fl=+t.value||0;saveSoon();break;
+ case'gbf':S.bf=+t.value||0;saveSoon();break;
+ case'start':if(t.value){S.start=t.value;save();render()}break;
+ case'shift':S.shift=+t.value||0;save();render();break;
+ case'title':S.title=t.value;saveSoon();break;
+ case'pday':{const x=s.pl[i];if(t.value===''){delete x.day;delete x.ord}else{x.day=+t.value;x.ord=1e6;normDay(sel,x.day)}save();render();break}
+ case'ptm':case'pte':setTimes(s,s.pl[i],f==='ptm'?'tm':'te',t.value);save();render();break;
+ case'ctm':case'cte':{const sx=S.stops[+t.dataset.si],q=sx.pl[i];setTimes(sx,q,f==='ctm'?'tm':'te',t.value);save();render();break}
+ case'cday':{const sx=S.stops[+t.dataset.si],q=sx.pl[i];if(t.value===''){delete q.day;delete q.ord}else{q.day=+t.value;q.ord=1e6;normDay(+t.dataset.si,q.day)}save();render();break}
+ case'rt':S.rt=t.checked;save();render();break;
+ case'mode':S.mode=t.value;save();render();break;
+ case'bkn':{if(t.dataset.g==='fb')S.fb[i].n=t.value;else if(t.dataset.g==='sb')S.stops[+t.dataset.si].bk[i].n=t.value;else S.stops[+t.dataset.si].pl[i].bn=t.value;saveSoon();break}
+ case'pbk':s.pl[i].bk=+t.value;save();render();break;
+ case'pbn':s.pl[i].bn=t.value;saveSoon();break;
+ case'roads':ROADS=t.checked;LS.set('jp3-roads',ROADS?'1':'0');$('zd').className=ROADS?'on':'';drawMap();break;
+ }}
+$('pbody').oninput=e=>{const t=e.target;if(t.id==='sq'||t.id==='q'){clearTimeout(t._t);t._t=setTimeout(()=>doSearch(t.id==='q'?'place':'stop',t.value,t.id==='q'?'qres':'sres'),900);return}if(t.dataset.f&&t.tagName!=='SELECT'&&t.type!=='checkbox'&&t.dataset.f!=='shift'&&t.dataset.f!=='start'&&t.type!=='time')field(t)};
+$('pbody').onchange=e=>{const t=e.target;if(t.id==='fi'){addImgs(t.files);t.value='';return}if(t.dataset.f==='pfile'){addOwn(t.files,S.stops[sel].pl[+t.dataset.i]);t.value='';return}if(t.id==='fj'){importFile(t.files[0]);t.value='';return}if(t.dataset.f&&(t.tagName==='SELECT'||t.type==='checkbox'||t.type==='number'||t.type==='date'||t.type==='time'))field(t)};
+$('pbody').onkeydown=e=>{if(e.key==='Enter'&&(e.target.id==='q'||e.target.id==='sq')){e.preventDefault();clearTimeout(e.target._t);doSearch(e.target.id==='q'?'place':'stop',e.target.value,e.target.id==='q'?'qres':'sres')}};
+function addImgs(files){const s=S.stops[sel];if(!s||!files)return;let n=0;const list=[...files];list.forEach(f=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);s.imgs.push(c.toDataURL('image/jpeg',.72));if(++n===list.length){save();render()}};im.onerror=()=>{if(++n===list.length){save();render()}};im.src=r.result};r.readAsDataURL(f)})}
+function importFile(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!o.s||!o.s.stops)throw 0;if(!confirm('Plan aus Datei laden? Der aktuelle Plan dieser Variante wird ersetzt.'))return;RG=PRE[o.rg]?o.rg:RG;LS.set('jp3-rg',RG);S=mig(o.s);sel=-1;openS=false;save();render();fitAll();toast('Plan geladen.')}catch(e){toast('Datei nicht lesbar.')}};r.readAsText(f)}
+/* Karten-Knöpfe */
+$('zi').onclick=()=>MAP&&MAP.zoomIn();$('zo').onclick=()=>MAP&&MAP.zoomOut();$('zr').onclick=fitAll;$('zl').onclick=()=>MAP&&MAP.locate({setView:true,maxZoom:14});
+$('zs').onclick=()=>{if(!MAP)return;SATON=!SATON;if(SATON){MAP.removeLayer(TL_DE);MAP.removeLayer(TL_OSM);TL_SAT.addTo(MAP)}else{MAP.removeLayer(TL_SAT);TL_DE.addTo(MAP)}$('zs').className=SATON?'on':''};
+$('zd').className=ROADS?'on':'';$('zd').onclick=()=>{ROADS=!ROADS;LS.set('jp3-roads',ROADS?'1':'0');$('zd').className=ROADS?'on':'';toast(ROADS?'Straßenrouten an (Auto, bis 500 km).':'Straßenrouten aus, nur Luftlinie.');drawMap();renderPanel()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&placingPl){placingPl=null;$('lmap').style.cursor=''}});
+/* ---------- Plan: Kalender, Tagesplan, Kettenroute ---------- */
+let calEd=null,actDay=null,tlDay=null;
+const PXH=48,z2=n=>('0'+n).slice(-2),t2s=m=>z2(Math.floor(m/60))+':'+z2(m%60),s2t=v=>/^\d\d:\d\d$/.test(v||'')?+v.slice(0,2)*60+ +v.slice(3):null;
+const WD=['So','Mo','Di','Mi','Do','Fr','Sa'];
+const MN=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const dstr=n=>WD[new Date(n*864e5).getUTCDay()]+' '+fD(n);
+const dayOf=(s,x)=>(typeof x.day==='number'&&x.day>=0&&x.day<nd(s))?x.day:null;
+function dayItems(si,day){const s=S.stops[si],r=[];s.pl.forEach((x,k)=>{if(dayOf(s,x)===day)r.push(k)});return r.sort((a,b)=>((s.pl[a].ord||0)-(s.pl[b].ord||0))||a-b)}
+function normDay(si,day){dayItems(si,day).forEach((k,j)=>{S.stops[si].pl[k].ord=j})}
+function poolItems(si){const s=S.stops[si],r=[];s.pl.forEach((x,k)=>{if(dayOf(s,x)===null)r.push(k)});return r}
+function chainPts(si,day){const s=S.stops[si],its=dayItems(si,day).map(k=>s.pl[k]).filter(x=>x.lat!=null),b=baseOf(s),base=b||{lat:s.lat,lon:s.lon,n:'Stadtmitte '+s.n};const p=[base].concat(its);if(its.length&&S.rt!==false)p.push(base);return{base,its,pts:p,hasBase:!!b}}
+function legInfo(a,b){const d=hav(a,b);if(d<1.5){const k=d*1.25;return{k,t:k/4.5,walk:1,ic:'🚶'}}const r=ROADS&&d<=500?getLeg(a,b):null,k=r?r.d/1000:d*1.3;
+ if(S.mode==='car')return{k,t:r?r.t/3600:k/30,rd:r,ic:'🚗'};return{k,t:8/60+k/26,rd:r,ic:'🚆'}}
+function chainStat(pts){let km=0,h=0,w=1;for(let i=0;i+1<pts.length;i++){const l=legInfo(pts[i],pts[i+1]);km+=l.k;h+=l.t;if(!l.walk)w=0}return{km,h,walk:w}}
+function gmChain(c){const p=c.pts;if(p.length<2)return'';const st=chainStat(p),w=p.slice(1,-1);return'https://www.google.com/maps/dir/?api=1&origin='+p[0].lat+','+p[0].lon+'&destination='+p[p.length-1].lat+','+p[p.length-1].lon+(w.length?'&waypoints='+w.map(q=>q.lat+','+q.lon).join('%7C'):'')+'&travelmode='+(st.walk?'walking':'driving')}
+function optimize(si,day){const s=S.stops[si],ks=dayItems(si,day),loc=ks.filter(k=>s.pl[k].lat!=null),rest=ks.filter(k=>s.pl[k].lat==null);if(loc.length<2){toast('Mindestens zwei Orte mit Position nötig.');return}
+ const base=chainPts(si,day).base,rt=S.rt!==false,dist=(a,b)=>hav(a,b),cost=o=>{let c=0,p=base;o.forEach(k=>{c+=dist(p,s.pl[k]);p=s.pl[k]});if(rt)c+=dist(p,base);return c};let best=null,bc=1e18;
+ if(loc.length<=7){const rec=(cur,left)=>{if(!left.length){const c=cost(cur);if(c<bc){bc=c;best=cur.slice()}return}left.forEach((k,i)=>rec(cur.concat(k),left.filter((_,j)=>j!==i)))};rec([],loc)}
+ else{let p=base,left=loc.slice();best=[];while(left.length){let bi=0;left.forEach((k,i)=>{if(dist(p,s.pl[k])<dist(p,s.pl[left[bi]]))bi=i});const k=left.splice(bi,1)[0];best.push(k);p=s.pl[k]}}
+ best.concat(rest).forEach((k,j)=>{s.pl[k].ord=j});save();render();toast('Reihenfolge optimiert (kürzeste Strecke).')}
+function setTimes(s,x,w,v){const si=S.stops.indexOf(s);if(w==='tm'){if(!v){delete x.tm;delete x.dur}else{x.tm=v;x.dur=x.dur||60}}else{const b=s2t(v),a=s2t(x.tm);if(b!==null){if(a===null){x.tm=t2s(Math.max(0,b-60));x.dur=Math.min(60,b)||15}else x.dur=Math.max(15,b-a)}}if(typeof x.day==='number')reorderByTime(si,x.day)}
+function reorderByTime(si,day){const s=S.stops[si],ks=dayItems(si,day),tm=ks.filter(k=>s2t(s.pl[k].tm)!==null).sort((a,b)=>s2t(s.pl[a].tm)-s2t(s.pl[b].tm)),un=ks.filter(k=>s2t(s.pl[k].tm)===null);tm.concat(un).forEach((k,j)=>{s.pl[k].ord=j})}
+function tlTravel(si,day){const s=S.stops[si],ks=dayItems(si,day).filter(k=>s2t(s.pl[k].tm)!==null&&s.pl[k].lat!=null).sort((a,b)=>s2t(s.pl[a].tm)-s2t(s.pl[b].tm)),c=chainPts(si,day),out=[],mn=l=>Math.max(5,Math.ceil(l.t*60/5)*5);
+ ks.forEach((k,i)=>{const x=s.pl[k],m=s2t(x.tm),e=m+(x.dur||60);
+  if(i===0){const l=legInfo(c.base,x),n=mn(l);out.push({st:m-n,mn:n,l,to:k,txt:(c.hasBase?'🛏️ Unterkunft':'📍 Stadtmitte')+' → '+x.n})}
+  else{const p=s.pl[ks[i-1]],l=legInfo(p,x),n=mn(l),pe=s2t(p.tm)+(p.dur||60);out.push({st:pe,mn:n,l,to:k,gap:m-pe,txt:p.n+' → '+x.n})}
+  if(i===ks.length-1&&S.rt!==false){const l=legInfo(x,c.base),n=mn(l);out.push({st:e,mn:n,l,to:-1,txt:x.n+' → '+(c.hasBase?'🛏️ Unterkunft':'Stadtmitte')})}});return out}
+function tlRange(si,day){const s=S.stops[si];let a=7*60,b=23*60;dayItems(si,day).forEach(k=>{const x=s.pl[k],m=s2t(x.tm);if(m!==null){a=Math.min(a,Math.floor(m/60)*60);b=Math.max(b,Math.ceil((m+(x.dur||60))/60)*60)}});tlTravel(si,day).forEach(t=>{a=Math.min(a,Math.floor(t.st/60)*60);b=Math.max(b,Math.ceil((t.st+t.mn)/60)*60)});return[Math.max(0,a),Math.min(24*60,b)]}
+function tlHtml(si,day){const s=S.stops[si],r=tlRange(si,day),H=(r[1]-r[0])/60*PXH,ks=dayItems(si,day).filter(k=>s2t(s.pl[k].tm)!==null).sort((a,b)=>s2t(s.pl[a].tm)-s2t(s.pl[b].tm)),tv=tlTravel(si,day),tight={};tv.forEach(t=>{if(t.gap!==undefined&&t.gap<t.mn)tight[t.to]=t});
+ const cols=[],pos={};ks.forEach(k=>{const m=s2t(s.pl[k].tm),e=m+(s.pl[k].dur||60);let c=cols.findIndex(en=>en<=m);if(c<0){c=cols.length;cols.push(0)}cols[c]=e;pos[k]=c});const nc=Math.max(1,cols.length),t=tg0(s)[2],py=m=>(m-r[0])/60*PXH;
+ let h='<div class="tlz" data-si="'+si+'" data-day="'+day+'" data-t0="'+r[0]+'" style="height:'+H+'px">';for(let m=r[0];m<=r[1];m+=60)h+='<div class="hl" style="top:'+py(m)+'px"><span>'+t2s(m)+'</span></div>';
+ h+='<div class="tlb">';
+ tv.forEach(q=>{h+='<div class="tr" style="top:'+py(q.st)+'px;height:'+Math.max(16,q.mn/60*PXH-2)+'px" title="'+esc(q.txt)+'">'+q.l.ic+' '+q.mn+' Min.<small>'+Math.round(q.l.k*10)/10+' km · '+esc(q.txt)+'</small></div>'});
+ ks.forEach(k=>{const x=s.pl[k],m=s2t(x.tm),du=x.dur||60,tg=tight[k];
+  h+='<div class="tb'+(tg?' tight':'')+'" data-si="'+si+'" data-pi="'+k+'" style="top:'+py(m)+'px;height:'+Math.max(18,du/60*PXH-2)+'px;left:'+(73*pos[k]/nc)+'%;width:'+(73/nc-1)+'%;background:'+t+'"><span class="tbt">'+t2s(m)+'–'+t2s(m+du)+' '+PI(x.ty)+' '+esc(x.n)+'</span>'+(tg&&du>=45?'<small>⚠️ Weg ca. '+tg.mn+' Min., Pause nur '+Math.max(0,tg.gap)+' Min.</small>':'')+'<b class="tbx" data-a="tl-un" data-si="'+si+'" data-pi="'+k+'" title="Aus der Zeitachse nehmen">×</b><i class="tbh"></i></div>'});
+ return h+'</div></div><p class="mut sm" style="margin:4px 0 0">Orte aus der Liste (oder am Rechner direkt von der Karte) auf die Zeitachse ziehen. Block ziehen = verschieben, unteren Rand ziehen = Dauer. Die blau gestreiften Blöcke rechts sind die geschätzte Reisezeit zwischen den Orten. Gelber Rand: Weg ist länger als die Pause.</p>'}
+function chipHtml(si,k,n,ed){const s=S.stops[si],x=s.pl[k],o=ed===si+':'+k;
+ let h='<div class="dc" data-si="'+si+'" data-pi="'+k+'"><div class="dr"><span class="dh" title="Ziehen">⠿</span>'+(n?'<span class="dn">'+n+'</span>':'')+'<span class="dt" data-a="cal-ed" data-si="'+si+'" data-pi="'+k+'">'+PI(x.ty)+' '+esc(x.n)+(x.tm?' <small>'+esc(x.tm)+(x.dur?' · '+x.dur+' Min.':'')+'</small>':'')+(x.lat==null?' <small title="Keine Position">❔</small>':'')+'</span></div>';
+ if(o){const nn=nd(s),v0=visit(si)[0];h+='<div class="ce"><label>Von<input type="time" data-f="ctm" data-si="'+si+'" data-i="'+k+'" value="'+esc(x.tm||'')+'"></label><label>Bis<input type="time" data-f="cte" data-si="'+si+'" data-i="'+k+'" value="'+(s2t(x.tm)!==null?t2s(Math.min(1439,s2t(x.tm)+(x.dur||60))):'')+'"></label><select data-f="cday" data-si="'+si+'" data-i="'+k+'"><option value="">kein Tag</option>'+Array.from({length:nn},(_,d)=>'<option value="'+d+'"'+(dayOf(s,x)===d?' selected':'')+'>'+dstr(v0+d)+'</option>').join('')+'</select><button class="btn sm2" data-a="pl-open" data-si="'+si+'" data-pi="'+k+'">✏️</button></div>'}
+ return h+'</div>'}
+function dayCard(si,day,hl){const s=S.stops[si],v0=visit(si)[0],items=dayItems(si,day),c=chainPts(si,day),st=chainStat(c.pts),on=actDay&&actDay.si===si&&actDay.day===day,tl=tlDay&&tlDay.si===si&&tlDay.day===day;
+ let h='<div class="day'+(on?' on':'')+'" id="d-'+si+'-'+day+'"><div class="dhd"><b>'+dstr(v0+day)+'</b><span class="mut sm">Tag '+(day+1)+' · '+esc(s.n)+'</span><span style="margin-left:auto" class="row"><button class="btn sm2" data-a="tl-toggle" data-si="'+si+'" data-day="'+day+'">'+(tl?'⏱ ✓':'⏱ Zeit')+'</button><button class="btn sm2" data-a="cal-map" data-si="'+si+'" data-day="'+day+'">'+(on?'🗺️ ✓':'🗺️ Karte')+'</button></span></div>';
+ h+='<div class="dz" data-si="'+si+'" data-day="'+day+'">'+(items.length?items.map((k,j)=>chipHtml(si,k,j+1,calEd)).join(''):'<span class="mut sm">Orte hierher ziehen</span>')+'</div>'+(tl?tlHtml(si,day):'');
+ if(c.its.length){h+='<div class="dsum sm">'+(c.hasBase?'🛏️ ':'📍 ')+esc(c.base.n)+' → '+c.its.map((x,j)=>(j+1)).join(' → ')+(S.rt!==false?' → zurück':'')+'<br><b>'+(st.km<10?st.km.toFixed(1):Math.round(st.km))+' km · '+ft(st.h)+'</b> <span class="mut">('+(st.walk?'zu Fuß':S.mode==='car'?'Auto':'ÖPNV, grob geschätzt')+')</span><div class="row" style="margin-top:6px"><a class="btn sm2" target="_blank" rel="noopener" href="'+gmChain(c)+'">Google Maps</a>'+(c.its.length>1?'<button class="btn sm2" data-a="cal-opt" data-si="'+si+'" data-day="'+day+'">↻ Beste Reihenfolge</button>':'')+'</div>'+(!c.hasBase?'<div class="mut sm" style="margin-top:4px">Start ist die Stadtmitte. Setzt eine Unterkunft (⭐), dann beginnt die Route dort.</div>':'')+'</div>'}
+ return h+'</div>'}
+function calMonths(){const a=pD(S.start),e=a+days()-1,d0=new Date(a*864e5),d1=new Date(e*864e5);let y=d0.getUTCFullYear(),m=d0.getUTCMonth(),h='';
+ const stopAt=n=>{for(let i=0;i<S.stops.length;i++){const v=visit(i);if(n>=v[0]&&n<=v[1])return i}return-1};
+ for(;;){const first=Date.UTC(y,m,1)/864e5,len=new Date(Date.UTC(y,m+1,0)).getUTCDate(),lead=(new Date(first*864e5).getUTCDay()+6)%7;
+  h+='<div class="card"><b>'+MN[m]+' '+y+'</b><div class="mg">'+['Mo','Di','Mi','Do','Fr','Sa','So'].map(w=>'<span class="wd">'+w+'</span>').join('')+'<span></span>'.repeat(lead);
+  for(let d=1;d<=len;d++){const n=first+d-1,si=stopAt(n);if(si<0){h+='<span class="mc off">'+d+'</span>';continue}const s=S.stops[si],t=tg0(s),dd=n-visit(si)[0],cnt=dayItems(si,dd).length;
+   h+='<button class="mc" style="background:linear-gradient(160deg,'+t[2]+'cc,'+t[3]+'cc)" data-a="cal-day" data-si="'+si+'" data-day="'+dd+'" title="'+esc(s.n)+'">'+d+'<i>'+t[0]+'</i>'+(cnt?'<u>'+cnt+'</u>':'')+'</button>'}
+  h+='</div></div>';if(y===d1.getUTCFullYear()&&m===d1.getUTCMonth())break;m++;if(m>11){m=0;y++}}return h}
+function vCal(){let h='<h2>📅 Plan</h2>'+calMonths()+'<div class="card"><label class="row sm"><input type="checkbox" data-f="rt"'+(S.rt!==false?' checked':'')+' style="width:auto"> Tagesroute endet wieder in der Unterkunft</label><label class="sm mut" style="display:block;margin-top:8px">Reisezeit-Schätzung (zu Fuß bis 1,5 km, sonst)<select data-f="mode"><option value="oepnv"'+(S.mode!=='car'?' selected':'')+'>🚆 Bahn/Bus, grob (Wartezeit eingerechnet)</option><option value="car"'+(S.mode==='car'?' selected':'')+'>🚗 Auto</option></select></label><div class="row" style="margin-top:8px"><button class="btn" data-a="ics">📆 In Handy-Kalender übernehmen (.ics)</button></div><p class="mut sm" style="margin:8px 0 0">Ziehen: am Griff ⠿ fassen und auf einen Tag oder zurück in „Noch ohne Tag“ legen. Name antippen = Uhrzeit oder Tag ändern. Kette: Unterkunft → Ort 1 → 2 → 3 → zurück, „🗺️ Karte“ zeigt sie auf der Karte.</p></div>';
+ S.stops.forEach((s,si)=>{const t=tg0(s),pool=poolItems(si);h+='<h3>'+t[0]+' '+esc(s.n)+' <span class="mut sm">'+fD(visit(si)[0])+'–'+fD(visit(si)[1])+'</span></h3><div class="day"><div class="dhd"><b>Noch ohne Tag</b><span class="mut sm">'+pool.length+'</span></div><div class="dz" data-si="'+si+'" data-day="">'+(pool.length?pool.map(k=>chipHtml(si,k,0,calEd)).join(''):'<span class="mut sm">'+(s.pl.length?'Alles eingeplant':'Noch keine Orte, im Reiter Reise unter „Orte“ suchen')+'</span>')+'</div></div>';for(let d=0;d<nd(s);d++)h+=dayCard(si,d)});return h}
+function icsText(){const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Japan Reiseplaner//DE','CALSCALE:GREGORIAN'],z=n=>('0'+n).slice(-2),ymd=n=>{const d=new Date(n*864e5);return d.getUTCFullYear()+z(d.getUTCMonth()+1)+z(d.getUTCDate())},e2=t=>String(t||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');let u=0;
+ const ev=(sum,loc,desc,a,b)=>{L.push('BEGIN:VEVENT','UID:jp2-'+Date.now()+'-'+(u++)+'@japan-planer','DTSTAMP:'+ymd(Date.now()/864e5)+'T000000Z','SUMMARY:'+e2(sum));if(loc)L.push('LOCATION:'+e2(loc));if(desc)L.push('DESCRIPTION:'+e2(desc));L.push(a,b,'END:VEVENT')};
+ S.stops.forEach((s,i)=>{const v=visit(i);ev('📍 '+s.n,s.n+', Japan','','DTSTART;VALUE=DATE:'+ymd(v[0]),'DTEND;VALUE=DATE:'+ymd(v[1]+1));
+  s.pl.forEach(x=>{const d=dayOf(s,x);if(d===null)return;const n=v[0]+d;let a,b;if(x.tm&&/^\d\d:\d\d$/.test(x.tm)){const m=+x.tm.slice(0,2)*60+ +x.tm.slice(3),m2=Math.min(1439,m+(x.dur||90));a='DTSTART:'+ymd(n)+'T'+z(Math.floor(m/60))+z(m%60)+'00';b='DTEND:'+ymd(n)+'T'+z(Math.floor(m2/60))+z(m2%60)+'00'}else{a='DTSTART;VALUE=DATE:'+ymd(n);b='DTEND;VALUE=DATE:'+ymd(n+1)}
+   ev(PI(x.ty)+' '+x.n,(x.info&&x.info.addr?x.n+', '+x.info.addr:x.n+', '+s.n),x.t,a,b)})});L.push('END:VCALENDAR');return L.join('\r\n')}
+/* Ziehen (Maus und Touch) */
+let DR=null,drT=null;
+function drMove(e){if(!DR)return;DR.x=e.clientX;DR.y=e.clientY;DR.g.style.left=e.clientX+'px';DR.g.style.top=e.clientY+'px';const el=document.elementFromPoint(e.clientX,e.clientY);document.querySelectorAll('.ov,.ovc').forEach(n=>n.classList.remove('ov','ovc'));const z=el&&el.closest('.dz,.tlz');DR.z=z||null;DR.b=null;if(z){z.classList.add('ov');const c=el.closest('.dc');if(c&&+c.dataset.pi!==DR.pi){DR.b=+c.dataset.pi;c.classList.add('ovc')}}}
+function drUp(){if(!DR)return;window.removeEventListener('pointermove',drMove);window.removeEventListener('pointerup',drUp);window.removeEventListener('pointercancel',drUp);clearInterval(drT);DR.g.remove();document.querySelectorAll('.ov,.ovc,.lift').forEach(n=>n.classList.remove('ov','ovc','lift'));const d=DR;DR=null;if(!d.z)return;
+ if(+d.z.dataset.si!==d.si){toast('Dieser Ort gehört zu einem anderen Ziel.');return}const s=S.stops[d.si],x=s.pl[d.pi],day=d.z.dataset.day;
+ if(d.z.classList.contains('tlz')){const r=d.z.getBoundingClientRect(),m=Math.max(0,Math.round(((d.y-r.top)/PXH*60+ +d.z.dataset.t0)/15)*15);x.day=+day;x.tm=t2s(Math.min(m,23*60));x.dur=x.dur||60;reorderByTime(d.si,x.day);save();renderPanel();drawMap();return}
+ if(day===''){delete x.day;delete x.ord}else{x.day=+day;x.ord=d.b!=null?((s.pl[d.b].ord||0)-.5):1e6;normDay(d.si,x.day)}save();renderPanel();drawMap()}
+function startDrag(e,si,pi,label,chip){const g=document.createElement('div');g.className='ghost';g.textContent=label;document.body.appendChild(g);DR={si,pi,g,z:null,b:null,x:e.clientX,y:e.clientY,fromMap:!chip,sx:e.clientX,sy:e.clientY};if(chip)chip.classList.add('lift');drMove(e);
+ window.addEventListener('pointermove',drMove);window.addEventListener('pointerup',drUp);window.addEventListener('pointercancel',drUp);
+ drT=setInterval(()=>{if(!DR)return;const r=$('pbody').getBoundingClientRect();if(DR.y<r.top+56)$('pbody').scrollTop-=12;else if(DR.y>r.bottom-56)$('pbody').scrollTop+=12},30)}
+$('pbody').addEventListener('pointerdown',e=>{
+ const h=e.target.closest('.dh');if(h){const c=h.closest('.dc');if(!c)return;e.preventDefault();startDrag(e,+c.dataset.si,+c.dataset.pi,c.querySelector('.dt').textContent,c);return}
+ const tb=e.target.closest('.tb');if(tb&&!e.target.closest('.tbx')){e.preventDefault();const si=+tb.dataset.si,pi=+tb.dataset.pi,x=S.stops[si].pl[pi],rs=!!e.target.closest('.tbh'),z=tb.closest('.tlz'),r0=+z.dataset.t0,m0=s2t(x.tm),du0=x.dur||60,y0=e.clientY;let m1=m0,d1=du0,moved=false;tb.classList.add('mvg');
+  const mv=ev=>{const dm=Math.round((ev.clientY-y0)/PXH*60/15)*15;if(Math.abs(ev.clientY-y0)>3)moved=true;if(rs){d1=Math.max(15,du0+dm)}else{m1=Math.max(r0-120,Math.min(24*60-du0,m0+dm))}
+   tb.style.top=((m1-r0)/60*PXH)+'px';tb.style.height=Math.max(18,d1/60*PXH-2)+'px';const tt=tb.querySelector('.tbt');if(tt)tt.textContent=t2s(m1)+'–'+t2s(m1+d1)+' '+PI(x.ty)+' '+x.n};
+  const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);tb.classList.remove('mvg');if(moved){x.tm=t2s(m1);x.dur=d1;reorderByTime(si,x.day);save();renderPanel();drawMap()}};
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up)}});
+$('dayx').onclick=()=>{actDay=null;drawMap();if($('pbody').querySelector('.day'))renderPanel()};
+
+/* ---------- Fotos ---------- */
+const phList=x=>(x.imgs||[]).map(u=>({u,own:1})).concat(x.ph||[]);
+function phStrip(s,k,x){const l=phList(x),own=(x.imgs||[]).length;let h='<div class="ph">'+l.map((q,j)=>'<div><img src="'+esc(q.u)+'" alt="" loading="lazy" data-a="lb" data-si="'+S.stops.indexOf(s)+'" data-pi="'+k+'" data-k="'+j+'">'+(q.own?'<b data-a="ph-del" data-i="'+k+'" data-k="'+j+'">×</b>':'')+'</div>').join('')+'</div>';
+ h+='<div class="row"><label class="btn sm2">📷 Eigenes Foto<input type="file" accept="image/*" multiple hidden data-f="pfile" data-i="'+k+'"></label>'+(x.lat!=null?'<button class="btn sm2" data-a="ph-find" data-i="'+k+'">🔄 Fotos suchen</button>':'')+'</div>'+((x.ph&&x.ph.length)?'<div class="mut sm">Fotos: Wikipedia/Wikimedia Commons (frei lizenziert). Bei Restaurants und Hotels sind es oft Bilder aus der Umgebung. Antippen vergrößert und zeigt die Quelle.</div>':(x.phTried&&!l.length?'<div class="mut sm">Keine passenden Fotos gefunden. Fügt gern ein eigenes hinzu.</div>':''));return h}
+function showLb(q){if(!q)return;$('lb').querySelector('img').src=q.u;const a=$('lbs');a.href=q.p||q.u;a.textContent=q.own?'':'Quelle: '+(q.t==='wiki'?'Wikipedia':'Wikimedia Commons');$('lb').classList.add('on')}
+$('lb').onclick=e=>{if(e.target.tagName!=='A')$('lb').classList.remove('on')};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('lb').classList.remove('on')});
+let pq=Promise.resolve();
+const wj=u=>fetch(u).then(r=>r.json());
+const okImg=u=>/\.(jpe?g|png|webp)(\?|$)/i.test(u||'');
+function findPhotos(o,isStop){return new Promise(res=>{pq=pq.then(()=>new Promise(r=>setTimeout(r,250))).then(async()=>{const out=[],seen={},add=q=>{if(q&&q.u&&!seen[q.u]&&okImg(q.u)){seen[q.u]=1;out.push(q)}};
+  try{if(o.lat!=null){const maxd=isStop?40:3,nm=encodeURIComponent(o.n);for(const lang of['de','en']){if(out.length)break;const j=await wj('https://'+lang+'.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=3&gsrsearch='+nm+'%20Japan&prop=pageimages|coordinates|info&inprop=url&piprop=thumbnail&pithumbsize=600&colimit=3');
+   const pg=j&&j.query&&j.query.pages?Object.values(j.query.pages).sort((a,b)=>a.index-b.index):[];for(const q of pg){const c=q.coordinates&&q.coordinates[0];if(q.thumbnail&&c&&hav({lat:o.lat,lon:o.lon},{lat:c.lat,lon:c.lon})<maxd){add({u:q.thumbnail.source,p:q.fullurl,t:'wiki'});break}}}
+   if(out.length<4){const rad=isStop?2000:(/^[RCBMH]$/.test(o.ty)?100:250),j=await wj('https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord='+o.lat+'%7C'+o.lon+'&ggsradius='+rad+'&ggslimit=8&ggsnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=500');
+    const pg=j&&j.query&&j.query.pages?Object.values(j.query.pages):[];pg.forEach(q=>{const ii=q.imageinfo&&q.imageinfo[0];if(ii&&out.length<4)add({u:ii.thumburl||ii.url,p:ii.descriptionurl,t:'commons'})})}}}catch(e){}
+  res(out)})})}
+function afterPh(){const a=document.activeElement;if(!a||a.tagName!=='INPUT'&&a.tagName!=='TEXTAREA'){renderPanel()}}
+const skipPh=(o,f)=>!f&&o.phTried&&((o.ph&&o.ph.length)||Date.now()-o.phTried<864e5);
+function phPlace(s,x,force){if(x.lat==null||skipPh(x,force))return;x.phTried=Date.now();findPhotos(x,false).then(l=>{x.ph=l;save();afterPh()})}
+function phStop(s,force){if(skipPh(s,force))return;s.phTried=Date.now();findPhotos({n:s.n,lat:s.lat,lon:s.lon,ty:'S'},true).then(l=>{s.ph=l;save();afterPh();drawMap()})}
+function phAll(){S.stops.forEach(s=>{phStop(s)})}
+function phStopPlaces(s){(s.pl||[]).forEach(x=>phPlace(s,x))}
+function addOwn(files,x){if(!files||!x)return;let n=0;const list=[...files];list.forEach(f=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,700/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);x.imgs=x.imgs||[];x.imgs.push(c.toDataURL('image/jpeg',.7));if(++n===list.length){save();renderPanel()}};im.onerror=()=>{if(++n===list.length){save();renderPanel()}};im.src=r.result};r.readAsDataURL(f)})}
+/* ---------- v3: Start, Buchungen, Reiseunterlage ---------- */
+const BS={1:['⬜','offen'],2:['🟡','reserviert'],3:['✅','gebucht']};
+let bkMore=false;
+const todayN=()=>{const t=new Date();return dnum(t.getFullYear(),t.getMonth()+1,t.getDate())};
+const dfull=n=>dstr(n)+new Date(n*864e5).getUTCFullYear();
+function bkAll(){const r=[];S.fb.forEach((b,i)=>r.push({g:'fb',si:-1,i,t:b.t,s:b.s,n:b.n,grp:'✈️ Flüge und Allgemein'}));S.stops.forEach((s,si)=>{s.bk.forEach((b,j)=>r.push({g:'sb',si,i:j,t:b.t,s:b.s,n:b.n,grp:s.n}));s.pl.forEach((x,k)=>{if(x.bk>=1)r.push({g:'pl',si,i:k,t:PI(x.ty)+' '+x.n,s:x.bk,n:x.bn||'',grp:s.n})})});return r}
+function bkRow(b){return'<div class="bkr"><button class="bks" data-a="bk-cyc" data-g="'+b.g+'" data-si="'+b.si+'" data-i="'+b.i+'" title="Status wechseln: offen, reserviert, gebucht">'+BS[b.s][0]+'</button><div style="flex:1;min-width:0"><div class="bkt'+(b.s===3?' dn2':'')+'">'+esc(b.t)+' <span class="mut sm">'+BS[b.s][1]+(b.grp&&b.g!=='fb'?' · '+esc(b.grp):'')+'</span></div><input type="text" data-f="bkn" data-g="'+b.g+'" data-si="'+b.si+'" data-i="'+b.i+'" placeholder="Bestätigungsnr., Preis, Hinweis …" value="'+esc(b.n||'')+'"></div><button class="x" data-a="bk-del" data-g="'+b.g+'" data-si="'+b.si+'" data-i="'+b.i+'" title="Entfernen">×</button></div>'}
+function nextDayRef(){const v=S.stops,a=pD(S.start),e=a+days()-1,td=todayN();if(td>=a&&td<=e){for(let i=0;i<v.length;i++){const vv=visit(i);if(td>=vv[0]&&td<=vv[1])return{si:i,day:td-vv[0],l:'Heute'}}}if(td>e){const si=v.length-1;return{si,day:nd(v[si])-1,l:'Letzter Tag'}}return{si:0,day:0,l:'Vorschau: erster Tag'}}
+function vHome(){const v=S.stops;if(!v.length)return'<h2>Start</h2><p class="mut">Noch keine Ziele. Im Reiter Reise eins hinzufügen.</p>';
+ const a=pD(S.start),d=days(),e=a+d-1,td=todayN();let big,sub;
+ if(td<a){big='Noch '+(a-td)+(a-td===1?' Tag':' Tage');sub='bis zur Abreise am '+dfull(a)}else if(td<=e){big='Tag '+(td-a+1)+' von '+d;sub=esc(v[nextDayRef().si].n)}else{big='Reise geschafft';sub='Schön war\'s! Fotos und Notizen bleiben hier.'}
+ const all=bkAll(),done=all.filter(b=>b.s===3).length,pct=all.length?Math.round(100*done/all.length):0,open=all.filter(b=>b.s<3);
+ let h='<div class="hero2"><div class="mut sm">'+esc(S.title)+'</div><div class="big">'+big+'</div><div>'+sub+'</div><div class="row" style="margin-top:10px"><span class="badge">📅 '+d+' Tage</span><span class="badge">💶 '+eur(grand())+' für zwei</span><span class="badge">📍 '+v.length+' Ziele</span></div></div>';
+ const r=nextDayRef(),s=v[r.si],t=tg0(s),dd=visit(r.si)[0]+r.day,its=dayItems(r.si,r.day),c=chainPts(r.si,r.day),st=chainStat(c.pts),bb=bl(r.si);
+ const ord=its.slice().sort((x,y)=>{const A=s2t(s.pl[x].tm),B=s2t(s.pl[y].tm);return(A===null?1e9:A)-(B===null?1e9:B)});
+ h+='<div class="card" style="padding:0;overflow:hidden"><div class="hh" style="'+stopHero(s)+';min-height:110px;margin:0;border-radius:0"><span class="em" style="font-size:2.6rem">'+(heroImg(s)?'':t[0])+'</span><div class="sub">'+r.l+'</div><div style="font-size:1.25rem;font-weight:800;text-shadow:0 2px 6px #0008">'+dstr(dd)+' · '+esc(s.n)+'</div></div><div style="padding:12px 14px">';
+ if(bb)h+='<div class="bloom '+bb.k+'">'+bb.e+' '+esc(bb.t)+'</div>';
+ if(ord.length){h+=ord.map(k=>{const x=s.pl[k],m=s2t(x.tm);return'<div class="hrow"><span class="ht">'+(m!==null?t2s(m)+'<br><span class="mut sm">'+t2s(m+(x.dur||60))+'</span>':'–')+'</span><div><b>'+PI(x.ty)+' '+esc(x.n)+'</b>'+(x.t?'<div class="mut sm">'+esc(x.t)+'</div>':'')+(x.info&&x.info.hours?'<div class="mut sm">⏰ '+esc(fmtH(x.info.hours).split(';')[0])+'</div>':'')+'</div></div>'}).join('');
+  if(c.its.length)h+='<div class="sm" style="margin-top:8px"><b>'+(st.km<10?st.km.toFixed(1):Math.round(st.km))+' km · '+ft(st.h)+'</b> <span class="mut">Wege insgesamt ('+(st.walk?'zu Fuß':S.mode==='car'?'Auto':'ÖPNV, grob')+')</span></div>'}
+ else h+='<p class="mut" style="margin:6px 0">Für diesen Tag ist noch nichts eingeplant. Orte unter „Reise > Orte“ suchen und im Plan auf den Tag ziehen.</p>';
+ h+='<div class="row" style="margin-top:10px"><button class="btn pri sm2" data-a="home-plan" data-si="'+r.si+'" data-day="'+r.day+'">📅 Tag planen</button>'+(c.its.length?'<button class="btn sm2" data-a="cal-map" data-si="'+r.si+'" data-day="'+r.day+'">🗺️ Karte</button><a class="btn sm2" target="_blank" rel="noopener" href="'+gmChain(c)+'">Google Maps</a>':'')+'</div></div></div>';
+ h+='<div class="card"><div class="row" style="justify-content:space-between"><b>📋 Buchungen</b><span class="sm mut">'+done+' von '+all.length+' erledigt</span></div><div class="bar" style="margin:8px 0"><i style="width:'+pct+'%;background:var(--ok)"></i></div>';
+ if(!open.length)h+='<p class="sm" style="margin:6px 0">Alles gebucht, super!</p>';
+ else h+=(bkMore?all:open.slice(0,5)).map(bkRow).join('');
+ h+='<div class="row" style="margin-top:8px"><button class="btn sm2" data-a="bk-more">'+(bkMore?'Nur offene zeigen':'Alle '+all.length+' zeigen')+'</button><button class="btn sm2" data-a="bk-add" data-g="fb">+ Eintrag</button></div><p class="mut sm" style="margin:8px 0 0">Tippt das Kästchen: offen → reserviert → gebucht. Restaurants und Aktivitäten könnt ihr bei „Orte“ im Ziel als „Reservierung nötig“ markieren, dann erscheinen sie hier.</p></div>';
+ h+='<div class="row"><button class="btn pri" data-a="doc">📄 Reiseunterlage (Druck/PDF, offline)</button><button class="btn" data-a="share">📤 Teilen</button></div>';return h}
+/* Reiseunterlage */
+const DOCCSS='*{box-sizing:border-box}.dpage{font:14px/1.45 system-ui,sans-serif;color:#1d2140;max-width:820px;margin:0 auto;padding:18px}.dpage h1{font-size:26px;margin:0}.dpage h2{font-size:20px;margin:0 0 4px;border-bottom:3px solid #d9472b;padding-bottom:4px}.dpage h3{font-size:15px;margin:14px 0 4px;background:#f3ece2;padding:4px 8px;border-radius:6px}.dpage table{width:100%;border-collapse:collapse;margin:6px 0}.dpage td,.dpage th{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left;vertical-align:top;font-size:13px}.dpage th{background:#f3ece2}.dpage .m{color:#666;font-size:12px}.dpage .jp{font-size:22px;font-weight:700}.dpage .cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dpage .cd{border:2px solid #1d2140;border-radius:10px;padding:8px 10px;break-inside:avoid}.dpage .sec{margin-top:22px}.dpage .tag{display:inline-block;background:#f3ece2;border-radius:99px;padding:1px 8px;font-size:12px}.dpage ul{margin:4px 0;padding-left:18px}';
+function docBody(){const v=S.stops,esc2=esc,d=days(),a=pD(S.start);let h='<h1>🌸 '+esc(S.title)+'</h1><p class="m">'+dfull(a)+' bis '+dfull(a+d-1)+' · '+d+' Tage · '+v.length+' Ziele · Budget ca. '+eur(grand())+' für zwei · Stand '+dfull(todayN())+'</p>';
+ h+='<div class="sec"><h2>Überblick</h2><table><tr><th>#</th><th>Ziel</th><th>Datum</th><th>Nächte</th><th>Unterkunft</th></tr>'+v.map((s,i)=>{const vi=visit(i),b=baseOf(s)||s.pl.find(x=>x.ty==='H');return'<tr><td>'+(i+1)+'</td><td><b>'+esc(s.n)+'</b></td><td>'+fD(vi[0])+'–'+fD(vi[1])+'</td><td>'+nd(s)+'</td><td>'+(b?esc(b.n)+(b.info&&b.info.addr?'<br><span class="m">'+esc(b.info.addr)+'</span>':''):'<span class="m">noch offen</span>')+'</td></tr>'}).join('')+'</table></div>';
+ const all=bkAll();h+='<div class="sec"><h2>Buchungen</h2><table><tr><th></th><th>Was</th><th>Bereich</th><th>Notiz / Bestätigung</th></tr>'+all.map(b=>'<tr><td>'+BS[b.s][0]+'</td><td>'+esc(b.t)+'</td><td>'+esc(b.grp)+'</td><td>'+esc(b.n||'')+'</td></tr>').join('')+'</table></div>';
+ v.forEach((s,si)=>{const vi=visit(si),ht=baseOf(s)||s.pl.find(x=>x.ty==='H');h+='<div class="sec" style="page-break-before:always"><h2>'+(si+1)+'. '+esc(s.n)+' <span class="m">'+fD(vi[0])+'–'+fD(vi[1])+' · '+nd(s)+' Nächte</span></h2>';
+  if(s.note)h+='<p>'+esc(s.note)+'</p>';
+  if(ht)h+='<p><b>🛏️ '+esc(ht.n)+'</b>'+(ht.info&&ht.info.addr?'<br>'+esc(ht.info.addr):'')+(ht.info&&ht.info.phone?'<br>📞 '+esc(ht.info.phone):'')+(ht.jp?'<br><span class="jp">'+esc(ht.jp)+'</span>':'')+'</p>';
+  s.bk.forEach(b=>{if(b.n)h+='<p class="m">'+BS[b.s][0]+' '+esc(b.t)+': '+esc(b.n)+'</p>'});
+  for(let dy=0;dy<nd(s);dy++){const its=dayItems(si,dy).slice().sort((x,y)=>{const A=s2t(s.pl[x].tm),B=s2t(s.pl[y].tm);return(A===null?1e9:A)-(B===null?1e9:B)}),c=chainPts(si,dy),st=chainStat(c.pts);
+   h+='<h3>'+dstr(vi[0]+dy)+'</h3>';if(!its.length){h+='<p class="m">Noch nichts geplant.</p>';continue}
+   h+='<table>'+its.map(k=>{const x=s.pl[k],m=s2t(x.tm),i=x.info||{};return'<tr><td style="width:62px"><b>'+(m!==null?t2s(m)+'<br><span class="m">bis '+t2s(m+(x.dur||60))+'</span>':'–')+'</b></td><td><b>'+PI(x.ty)+' '+esc(x.n)+'</b>'+(x.jp?' <span class="m">'+esc(x.jp)+'</span>':'')+(x.t?'<br>'+esc(x.t):'')+(i.addr?'<br><span class="m">📍 '+esc(i.addr)+'</span>':'')+(i.hours?'<br><span class="m">⏰ '+esc(fmtH(i.hours))+'</span>':'')+(i.phone?'<br><span class="m">📞 '+esc(i.phone)+'</span>':'')+(x.bk?'<br><span class="tag">'+BS[x.bk][0]+' '+(x.bn?esc(x.bn):BS[x.bk][1])+'</span>':'')+'</td></tr>'}).join('')+'</table>';
+   if(c.its.length)h+='<p class="m">Wege: ca. '+(st.km<10?st.km.toFixed(1):Math.round(st.km))+' km · '+ft(st.h)+' ('+(st.walk?'zu Fuß':S.mode==='car'?'Auto':'ÖPNV, grob geschätzt')+')</p>'}
+  const un=poolItems(si).filter(k=>s.pl[k].ty!=='H');if(un.length)h+='<h3>Noch ohne Tag</h3><ul>'+un.map(k=>'<li>'+PI(s.pl[k].ty)+' '+esc(s.pl[k].n)+(s.pl[k].t?' <span class="m">('+esc(s.pl[k].t)+')</span>':'')+'</li>').join('')+'</ul>';h+='</div>'});
+ const jp=[];v.forEach(s=>s.pl.forEach(x=>{if(x.jp)jp.push(x)}));
+ if(jp.length)h+='<div class="sec" style="page-break-before:always"><h2>Zum Zeigen (Taxi, Passanten)</h2><div class="cards">'+jp.map(x=>'<div class="cd"><div class="jp">'+esc(x.jp)+'</div><div>'+esc(x.n)+'</div>'+(x.info&&x.info.addr?'<div class="m">'+esc(x.info.addr)+'</div>':'')+'</div>').join('')+'</div></div>';
+ h+='<div class="sec" style="page-break-before:always"><h2>Notfall und Hilfe</h2><table><tr><td><b>Polizei</b></td><td>110</td></tr><tr><td><b>Feuerwehr und Rettung</b></td><td>119</td></tr><tr><td><b>Japan Visitor Hotline</b> (24 Std., Englisch u. a.)</td><td>050-3816-2787</td></tr><tr><td><b>Deutsche Botschaft Tokio</b></td><td>+81 3 5791 7700 · außerhalb der Bürozeit +81 90 1708 4823</td></tr><tr><td><b>Schweizer Botschaft Tokio</b></td><td>+81 3 5449 8400</td></tr><tr><td><b>Österreichische Botschaft Tokio</b></td><td>Nummer bitte vorab auf bmeia.gv.at nachsehen</td></tr></table><p class="m">Nummern von Japan Tourism Agency, Auswärtigem Amt und EDA, Stand November 2026. Bitte vor der Reise auf den offiziellen Seiten gegenprüfen.</p>';
+ h+='<h2 style="margin-top:18px">Kleine Sätze</h2><table><tr><td class="jp" style="font-size:16px">ありがとうございます</td><td>Arigatō gozaimasu: Danke</td></tr><tr><td class="jp" style="font-size:16px">すみません</td><td>Sumimasen: Entschuldigung / Hallo (Bedienung rufen)</td></tr><tr><td class="jp" style="font-size:16px">これをください</td><td>Kore o kudasai: Das hier bitte</td></tr><tr><td class="jp" style="font-size:16px">〜はどこですか</td><td>… wa doko desu ka: Wo ist …?</td></tr><tr><td class="jp" style="font-size:16px">お会計をお願いします</td><td>Okaikei o onegaishimasu: Die Rechnung bitte</td></tr></table></div>';return h}
+(()=>{const st=document.createElement('style');st.textContent=DOCCSS;document.head.appendChild(st)})();
+function openDoc(){$('docp').innerHTML=docBody();$('doc').classList.add('on');$('doc').scrollTop=0}
+function saveDocFile(){const html='<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(S.title)+'</title><style>'+DOCCSS+'@media print{.sec{break-inside:auto}}</style></head><body><div class="dpage">'+docBody()+'</div></body></html>';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='japan-reiseunterlage.html';a.click();toast('Datei gespeichert. Sie funktioniert ohne Internet.')}
+$('doc').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const a=b.dataset.d;if(a==='close')$('doc').classList.remove('on');else if(a==='print')window.print();else if(a==='save')saveDocFile()};
+
+/* Start */
+(function(){const m=/[#&]p=([^&]+)/.exec(location.hash);if(m){try{const o=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));if(o.s&&o.s.stops&&confirm('Geteilten Plan laden? Euer Stand in dieser Variante wird ersetzt.')){RG=PRE[o.rg]?o.rg:RG;LS.set('jp3-rg',RG);S=mig(o.s);save()}}catch(e){}history.replaceState(null,'',location.pathname)}})();
+initMap();sheet(1);render();fitAll();phAll();
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
