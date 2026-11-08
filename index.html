@@ -220,15 +220,25 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-off
 #toast.on{opacity:1}
 .leaflet-popup-content{margin:12px 14px}
 @media(min-width:821px){#toast{bottom:30px}}
+
+.dstrip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}.dstrip::-webkit-scrollbar{display:none}
+.dchip{flex:none;min-width:54px;border:2px solid transparent;border-radius:14px;background:var(--soft);padding:5px 6px;display:flex;flex-direction:column;align-items:center;font-size:.72rem;line-height:1.2;position:relative;color:var(--ink)}
+.dchip i{font-style:normal;font-size:1rem}.dchip b{font-size:.78rem}.dchip.on{border-color:var(--c);background:var(--card);box-shadow:0 1px 6px #0003}
+.dchip u{position:absolute;top:-4px;right:-3px;background:var(--acc);color:#fff;border-radius:99px;font-size:.62rem;padding:0 5px;text-decoration:none}
+#mfp{display:none;position:absolute;right:58px;top:10px;width:230px;max-width:calc(100% - 80px);background:var(--card);border-radius:14px;box-shadow:var(--sh);padding:10px;z-index:501}#mfp.on{display:block}
+.fchip{border:1px solid var(--soft);background:var(--soft);border-radius:99px;padding:4px 9px;font-size:.78rem;color:var(--mut);opacity:.6}.fchip.on{background:var(--card);border-color:var(--acc);color:var(--ink);opacity:1}
+.imp{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.imp img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
+.pcv .pc .top{flex-wrap:wrap}.pcv .pth{width:100%;height:130px;border-radius:12px}
+table.cmp{border-collapse:collapse;width:100%;min-width:560px;font-size:.82rem}table.cmp th,table.cmp td{padding:6px 7px;border-bottom:1px solid var(--soft);text-align:left;vertical-align:top}table.cmp th.cur{color:var(--acc)}table.cmp td.best{background:#2f9e6b22;font-weight:800}
 </style>
 </head>
 <body>
 <header id="top"><div id="brand">🌸 <span>Japan <i>2027</i></span></div><div id="vs"></div></header>
 <div id="app">
  <section id="mapwrap"><div id="lmap"></div><div id="rstat"></div><div id="dayfl"><span id="dayt"></span><button id="dayx" title="Tagesroute ausblenden">✕</button></div>
-  <div id="mc"><button id="zi" title="Vergrößern">＋</button><button id="zo" title="Verkleinern">−</button><button id="zr" title="Ganze Reise zeigen">⟲</button><button id="zs" title="Satellit ein/aus">🛰️</button><button id="zd" title="Straßenrouten ein/aus">🛣️</button><button id="zl" title="Mein Standort">📡</button></div></section>
+  <div id="mc"><button id="zi" title="Vergrößern">＋</button><button id="zo" title="Verkleinern">−</button><button id="zr" title="Ganze Reise zeigen">⟲</button><button id="zs" title="Satellit ein/aus">🛰️</button><button id="zd" title="Straßenrouten ein/aus">🛣️</button><button id="zf" title="Karte filtern">🔍</button><button id="zl" title="Mein Standort">📡</button></div><div id="mfp"></div></section>
  <aside id="panel"><div id="handle"><i></i></div><div id="pbody"></div>
-  <nav id="bn"><button data-v="home"><b>🏠</b>Start</button><button data-v="route"><b>🗺️</b>Reise</button><button data-v="cal"><b>📅</b>Plan</button><button data-v="budget"><b>💶</b>Budget</button><button data-v="bloom"><b>🌸</b>Blüte</button><button data-v="more"><b>⚙️</b>Mehr</button></nav></aside>
+  <nav id="bn"><button data-v="home"><b>🏠</b>Start</button><button data-v="route"><b>🗺️</b>Reise</button><button data-v="cal"><b>📅</b>Tag</button><button data-v="budget"><b>💶</b>Budget</button><button data-v="bloom"><b>🌸</b>Blüte</button><button data-v="more"><b>⚙️</b>Mehr</button></nav></aside>
 </div>
 <div id="toast"></div><div id="doc"><div class="dbar"><button data-d="print">🖨️ Drucken / als PDF speichern</button><button data-d="save">💾 Als Datei speichern</button><button data-d="close">Schließen</button></div><div id="docb"><div class="dpage" id="docp"></div></div></div><div id="lb"><img alt=""><a id="lbs" target="_blank" rel="noopener"></a></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -324,7 +334,7 @@ function load(){try{const s=LS.get(KEY(RG),'')||LS.get('jp2-'+RG,'');if(s){const
 function mig(o){o.start=o.start||'2027-03-14';o.shift=+o.shift||0;if(o.fl==null)o.fl=900;if(o.bf==null)o.bf=10;if(!o.fb)o.fb=[{t:'✈️ Hinflug',s:1,n:''},{t:'✈️ Rückflug',s:1,n:''}];o.stops.forEach((s,i)=>{if(!s.bk)s.bk=defBk(i);s.pl=s.pl||[];s.imgs=s.imgs||[];s.items=s.items||[];s.tg=s.tg||'K';s.food=s.food||'';s.sp=s.sp||'';s.note=s.note||''});return o}
 let S=load(),sel=-1,openS=false,view='home',sub='ov',HITS=[],openPl={},ROADS=LS.get('jp3-roads',LS.get('jp2-roads','1'))!=='0';
 let tmr=null;
-const save=()=>{if(!LS.set(KEY(RG),JSON.stringify(S)))toast('Speicher voll: bitte weniger oder kleinere Bilder verwenden.')};
+let SY=null,DIRTY=false,inPull=false;const save=()=>{if(!inPull){S.ts=Date.now();if(SY)DIRTY=true}if(!LS.set(KEY(RG),JSON.stringify(S)))toast('Speicher voll: bitte weniger oder kleinere Bilder verwenden.');else pushSoon()};
 const saveSoon=()=>{clearTimeout(tmr);tmr=setTimeout(save,300)};
 let tt=null;function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),3800)}
 /* ---------- Datum, Kosten, Blüte ---------- */
@@ -405,7 +415,7 @@ function drawMap(){
   for(let i=0;i+1<c.pts.length;i++){const a=c.pts[i],b=c.pts[i+1],l=legInfo(a,b);if(l.rd)L.polyline(l.rd.c,{color:'#8a3fc7',weight:5,opacity:.9}).addTo(LAYER);else L.polyline([ll(a),ll(b)],{color:'#8a3fc7',weight:4,dashArray:'7 6',opacity:.9}).addTo(LAYER)}
   c.its.forEach((x,j)=>L.marker([x.lat,x.lon],{icon:L.divIcon({className:'mkw',html:'<div class="cn">'+(j+1)+'</div>',iconSize:[20,20],iconAnchor:[-4,24]}),interactive:false,keyboard:false,zIndexOffset:900}).addTo(LAYER));
   if(c.hasBase)L.marker([c.base.lat,c.base.lon],{icon:L.divIcon({className:'mkw',html:'<div class="pp hb" style="--c:#8a3fc7">🛏️</div>',iconSize:[28,28],iconAnchor:[14,14]}),interactive:false,keyboard:false,zIndexOffset:800}).addTo(LAYER)}
- if(z>=9||actDay)v.forEach((s,si)=>(s.pl||[]).forEach((x,pi)=>{if(x.lat==null||x.lon==null)return;if(actDay&&(si!==actDay.si||dayOf(s,x)!==actDay.day)&&z<9)return;
+ if(z>=9||actDay)v.forEach((s,si)=>(s.pl||[]).forEach((x,pi)=>{if(x.lat==null||x.lon==null)return;if(HID[x.ty]&&x.ty!=='H'||HID[x.ty]&&x.ty==='H')return;if(ONLYDAY&&actDay&&(si!==actDay.si||dayOf(s,x)!==actDay.day))return;if(actDay&&(si!==actDay.si||dayOf(s,x)!==actDay.day)&&z<9)return;
   const m=L.marker([x.lat,x.lon],{icon:L.divIcon({className:'mkw',html:'<div class="pp'+(x.ok?' dn':'')+(x===hot?' hb':'')+'" style="--c:'+tg0(s)[2]+'">'+PI(x.ty)+'</div>'+(z>=12?'<span class="mkl" style="top:30px">'+esc(x.n)+'</span>':''),iconSize:[28,28],iconAnchor:[14,14]}),draggable:si===sel&&openS,zIndexOffset:500,title:x.n}).addTo(LAYER);
   m.on('click',()=>{if(tlDay&&tlDay.si===si&&dayOf(s,x)!==tlDay.day){x.day=tlDay.day;x.ord=1e6;normDay(si,tlDay.day);save();toast('„'+x.n+'“ zu '+dstr(visit(si)[0]+tlDay.day)+' hinzugefügt. Ziehen auf die Zeitachse legt die Uhrzeit fest.');renderPanel();drawMap();return}window.openPlace(si,pi)});
   const el=m.getElement&&m.getElement();if(el&&tlDay&&tlDay.si===si&&!mobile())el.addEventListener('pointerdown',ev=>{if(ev.button)return;ev.preventDefault();ev.stopPropagation();startDrag(ev,si,pi,PI(x.ty)+' '+x.n,null)});
@@ -422,8 +432,8 @@ function fitAll(){if(!MAP||!S.stops.length)return;const mob=window.innerWidth<=8
 /* ---------- Kopf, Navigation, Sheet ---------- */
 function renderTop(){$('vs').innerHTML=Object.keys(PRE).map(k=>'<button class="vc'+(k===RG?' on':'')+'" data-v2="'+k+'">'+SHORT[k]+'</button>').join('');
  document.querySelectorAll('#bn button').forEach(b=>b.classList.toggle('on',b.dataset.v===view))}
-$('vs').onclick=e=>{const b=e.target.closest('[data-v2]');if(!b||b.dataset.v2===RG)return;save();RG=b.dataset.v2;LS.set('jp3-rg',RG);S=load();sel=-1;openS=false;view='route';placingPl=null;render();fitAll()};
-$('bn').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;if(b.dataset.v==='route')openS=false;view=b.dataset.v;render();$('pbody').scrollTop=0;if(window.innerWidth<=820&&view!=='route')sheet(view==='cal'?2:1)};
+$('vs').onclick=e=>{const b=e.target.closest('[data-v2]');if(!b||b.dataset.v2===RG)return;save();RG=b.dataset.v2;LS.set('jp3-rg',RG);S=load();syLoad();curDay=null;sel=-1;openS=false;view='route';placingPl=null;render();fitAll()};
+$('bn').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;if(b.dataset.v==='route')openS=false;view=b.dataset.v;render();$('pbody').scrollTop=0;if(window.innerWidth<=820&&view!=='route')sheet(view==='cal'&&calMode!=='day'?2:1)};
 let SH=1;const mobile=()=>window.innerWidth<=820;
 function sheet(n){SH=n;if(!mobile()){$('panel').style.height='';return}const H=$('app').offsetHeight;$('panel').style.height=n===0?'150px':n===1?Math.round(H*.5)+'px':(H-12)+'px'}
 (function(){const h=$('handle'),p=$('panel');let y0=0,h0=0,drag=false,moved=false;
@@ -434,13 +444,13 @@ function sheet(n){SH=n;if(!mobile()){$('panel').style.height='';return}const H=$
 window.addEventListener('resize',()=>{sheet(SH)});
 /* ---------- Panel ---------- */
 function render(){renderTop();renderPanel();drawMap()}
-function renderPanel(){const b=$('pbody'),st=b.scrollTop;b.innerHTML=view==='home'?vHome():view==='cal'?vCal():view==='budget'?vBudget():view==='bloom'?vBloom():view==='more'?vMore():(openS&&S.stops[sel]?vStop():vRoute());b.scrollTop=st}
+function renderPanel(){if(view==='cal'&&calMode==='day')ensureDay();else if(view!=='cal'&&view!=='home'&&0){}const b=$('pbody'),st=b.scrollTop;b.innerHTML=view==='home'?vHome():view==='cal'?(cmpOpen?vCmp():calMode==='day'?vDay():vCal()):view==='budget'?vBudget():view==='bloom'?vBloom():view==='more'?vMore():(openS&&S.stops[sel]?vStop():vRoute());b.scrollTop=st}
 function heroImg(s){return(s.imgs&&s.imgs[0])||(s.ph&&s.ph[0]&&s.ph[0].u)||''}
 function stopHero(s,cls){const im=heroImg(s),t=tg0(s);return im?'background-image:url('+im+')':'background:linear-gradient(135deg,'+t[2]+','+t[3]+')'}
 function vRoute(){const v=S.stops,tot=grand(),d=days(),okc=v.filter((s,i)=>{const b=bl(i);return b&&b.k==='ok'}).length,wc=v.filter((s,i)=>bl(i)).length;
  let h='<div class="kpis"><div class="kpi"><span class="i">📅</span><b>'+d+' Tage</b><span>'+fD(pD(S.start))+'–'+fD(pD(S.start)+d-1)+'</span></div><div class="kpi"><span class="i">💶</span><b>'+eur(tot)+'</b><span>'+eur(tot/2)+' pro Person</span></div><div class="kpi"><span class="i">🛣️</span><b>ca. '+Math.round(totalKm()).toLocaleString('de-AT')+' km</b><span>'+v.length+' Ziele</span></div><div class="kpi"><span class="i">🌸</span><b>'+okc+' von '+wc+'</b><span>Ziele mit Blüte-Treffer</span></div></div>';
  if(S.w)h+='<details class="card"><summary><b>💡 Idee hinter dieser Variante</b></summary><p class="sm" style="margin:8px 0 0">'+esc(S.w)+'</p></details>';
- h+='<div class="ribbon">'+v.map((s,i)=>{const t=tg0(s);return'<div style="flex:'+nd(s)+';background:linear-gradient(160deg,'+t[2]+','+t[3]+')" data-a="open" data-i="'+i+'" title="'+esc(s.n)+'"><i>'+t[0]+'</i>'+nd(s)+'d</div>'}).join('')+'</div>';
+ h+='<div class="row" style="margin:0 0 8px"><button class="btn sm2" data-a="cmp">⚖️ Varianten vergleichen</button></div><div class="ribbon">'+v.map((s,i)=>{const t=tg0(s);return'<div style="flex:'+nd(s)+';background:linear-gradient(160deg,'+t[2]+','+t[3]+')" data-a="open" data-i="'+i+'" title="'+esc(s.n)+'"><i>'+t[0]+'</i>'+nd(s)+'d</div>'}).join('')+'</div>';
  v.forEach((s,i)=>{if(i>0){const l=leg(i);h+='<div class="leg">'+(l.rd?'🚗':l.fl?'✈️':'🚆')+' ca. '+Math.round(l.km)+' km · '+ft(l.h)+' <a href="'+legUrl(v[i-1],s)+'" target="_blank" rel="noopener">Google Maps</a></div>'}
   const t=tg0(s),vi=visit(i),b=bl(i),np=(s.pl||[]).length;
   h+='<div class="sc'+(i===sel?' act':'')+'" data-a="open" data-i="'+i+'"><div class="hero" style="'+stopHero(s)+'">'+(heroImg(s)?'':t[0])+'<b>'+(i+1)+'</b></div><div class="sb"><strong>'+esc(s.n)+'</strong><div class="mut sm">'+fD(vi[0])+'–'+fD(vi[1])+' · '+nd(s)+' Nächte</div><div class="row" style="gap:5px;margin-top:5px"><span class="badge">💶 '+eur(sum(s))+'</span>'+(np?'<span class="badge">📍 '+np+'</span>':'')+(b?'<span class="badge '+b.k+'">'+b.e+' '+b.l+'</span>':'')+'</div></div><span class="go">›</span></div>'});
@@ -459,13 +469,13 @@ function sOv(s,b){const lines=x=>String(x||'').split('\n').map(a=>a.trim()).filt
  if(s.note)h+='<p style="margin:0 0 8px">'+esc(s.note).replace(/\n/g,'<br>')+'</p>';
  if(lines(s.food).length)h+='<h3>🍜 Das solltet ihr essen</h3><div class="chips">'+lines(s.food).map(x=>'<span class="chip">'+esc(x)+'</span>').join('')+'</div>';
  if(lines(s.sp).length)h+='<h3>🌸 Kirschblüten-Spots</h3><div class="chips">'+lines(s.sp).map(x=>'<span class="chip">'+esc(x)+'</span>').join('')+'</div>';
- const i=S.stops.indexOf(s);h+='<div class="row" style="margin-top:14px"><a class="btn" target="_blank" rel="noopener" href="'+gm(s.lat,s.lon)+'">📍 Google Maps</a><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q='+encodeURIComponent(s.n+' Japan')+'">🖼️ Bilder suchen</a>'+(i>0?'<a class="btn" target="_blank" rel="noopener" href="'+legUrl(S.stops[i-1],s)+'">🗺️ Route vom vorherigen Ziel</a>':'')+'</div>';
+ h+=impHtml(S.stops.indexOf(s));const i=S.stops.indexOf(s);h+='<div class="row" style="margin-top:14px"><a class="btn" target="_blank" rel="noopener" href="'+gm(s.lat,s.lon)+'">📍 Google Maps</a><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q='+encodeURIComponent(s.n+' Japan')+'">🖼️ Bilder suchen</a>'+(i>0?'<a class="btn" target="_blank" rel="noopener" href="'+legUrl(S.stops[i-1],s)+'">🗺️ Route vom vorherigen Ziel</a>':'')+'</div>';
  h+='<p class="mut sm" style="margin-top:10px">Tipp: Der Pin dieses Ziels lässt sich auf der Karte ziehen, wenn dieses Ziel offen ist. Unter „Orte“ sammelt ihr Restaurants, Sehenswürdigkeiten und die Unterkunft.</p>';return h}
-function sPl(s){let h='<div class="srch"><input type="text" id="q" placeholder="🔍 Ort suchen, z. B. Fushimi Inari, Ichiran, Hotel …" autocomplete="off"><button class="btn" data-a="qgo">Suchen</button></div><div id="qres"></div>';
+function sPl(s){let h='<div class="'+(plView==='cards'?'pcv':'')+'"><div class="tabs" style="margin:0 0 8px"><button data-a="pl-view" data-v="cards" class="'+(plView==='cards'?'on':'')+'">🖼️ Karten</button><button data-a="pl-view" data-v="list" class="'+(plView!=='cards'?'on':'')+'">☰ Kompakt</button></div><div class="srch"><input type="text" id="q" placeholder="🔍 Ort suchen, z. B. Fushimi Inari, Ichiran, Hotel …" autocomplete="off"><button class="btn" data-a="qgo">Suchen</button></div><div id="qres"></div>';
  const sg=(SUG[s.n]||[]).filter(g=>!s.pl.some(x=>x.n===g[1]));if(sg.length)h+='<p class="mut sm" style="margin:8px 0 4px">Vorschläge für dieses Ziel:</p><div class="chips">'+sg.map((g,k)=>'<button class="chip add" data-a="sug" data-k="'+k+'">+ '+PI(g[0])+' '+esc(g[1])+'</button>').join('')+'</div>';
  if(!s.pl.length)h+='<p class="mut" style="margin-top:14px">Noch keine Orte. Sucht oben nach einem Restaurant, einer Sehenswürdigkeit oder eurer Unterkunft. Mit „Hinzufügen“ landet der Ort direkt auf der Karte.</p>';
  if(s.pl.some(x=>x.ty==='H'&&x.lat!=null))h+='<p class="sm" style="margin:12px 0 0;color:var(--blue)">🔵 Von der Basis-Unterkunft (⭐) zeigt die Karte blaue Wege zu allen Orten dieses Ziels (ab Zoom 8).</p>';
- PT.forEach(tp=>{const idx=[];s.pl.forEach((x,k)=>{if(x.ty===tp[0])idx.push(k)});if(!idx.length)return;h+='<h3>'+tp[1]+' '+tp[2]+' <span class="mut sm">('+idx.length+')</span></h3>'+idx.map(k=>plCard(s,k)).join('')});return h}
+ PT.forEach(tp=>{const idx=[];s.pl.forEach((x,k)=>{if(x.ty===tp[0])idx.push(k)});if(!idx.length)return;h+='<h3>'+tp[1]+' '+tp[2]+' <span class="mut sm">('+idx.length+')</span></h3>'+idx.map(k=>plCard(s,k)).join('')});return h+'</div>'}
 function plCard(s,k){const x=s.pl[k],o=!!openPl[sel+':'+k],inf=x.info||{},w=safeUrl(inf.web),isH=x.ty==='H',bs=baseOf(s)===x;
  let h='<div class="pc'+(x.ok?' dn':'')+'" data-i="'+k+'"><div class="top">'+(phList(x)[0]?'<img class="pth" src="'+esc(phList(x)[0].u)+'" alt="" loading="lazy" data-a="lb" data-si="'+sel+'" data-pi="'+k+'" data-k="0">':'<span class="pic">'+PI(x.ty)+'</span>')+'<div style="flex:1;min-width:0"><input type="text" class="pn" data-f="pn" data-i="'+k+'" value="'+esc(x.n)+'" style="width:100%">'+(dayOf(s,x)!==null?'<div class="sm" style="color:#8a3fc7;font-weight:700">📅 '+dstr(visit(sel)[0]+dayOf(s,x))+(x.tm?' · '+esc(x.tm):'')+'</div>':'')+(x.t||inf.hours?'<div class="mut sm">'+(inf.hours?'⏰ '+esc(fmtH(inf.hours).split(';')[0]):'')+(x.t&&inf.hours?' · ':'')+esc(x.t||'')+'</div>':'')+'</div>'+
  (x.lat!=null?'<button class="ib" data-a="pl-go" data-i="'+k+'" title="Auf der Karte zeigen">🎯</button>':'<button class="ib" data-a="pl-pin" data-i="'+k+'" title="Per Klick auf der Karte setzen">📌</button>')+
@@ -499,7 +509,7 @@ function gmRoute(){return'https://www.google.com/maps/dir/'+S.stops.map(s=>s.lat
 function b64(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o))))}
 function shareLink(){const o=JSON.parse(JSON.stringify(S));o.stops.forEach(s=>{s.imgs=[];delete s.ph;s.pl.forEach(x=>{delete x.info;delete x.ph;x.imgs=[]})});return location.origin+location.pathname+'#p='+encodeURIComponent(b64({rg:RG,s:o}))}
 function copy(t,m){const done=()=>toast(m||'Kopiert.');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>fb());else fb();function fb(){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(e){toast('Kopieren nicht möglich.')}a.remove()}}
-function vMore(){return'<h2>⚙️ Mehr</h2><div class="card"><h3 style="margin-top:0">📤 Teilen</h3><div class="row"><button class="btn pri" data-a="share">Plan teilen (WhatsApp …)</button><button class="btn" data-a="copylink">🔗 Plan als Link kopieren</button><button class="btn" data-a="copytext">📋 Als Text kopieren</button></div><p class="mut sm">Der Link enthält euren Plan (ohne Bilder). Wer ihn öffnet, kann ihn laden und danach alles ändern. Jedes Gerät speichert nur seinen eigenen Stand.</p></div>'+
+function vMore(){return'<h2>⚙️ Mehr</h2>'+syCard()+'<div class="card"><h3 style="margin-top:0">📤 Teilen</h3><div class="row"><button class="btn pri" data-a="share">Plan teilen (WhatsApp …)</button><button class="btn" data-a="copylink">🔗 Plan als Link kopieren</button><button class="btn" data-a="copytext">📋 Als Text kopieren</button></div><p class="mut sm">Der Link enthält euren Plan (ohne Bilder). Wer ihn öffnet, kann ihn laden und danach alles ändern. Jedes Gerät speichert nur seinen eigenen Stand.</p></div>'+
 '<div class="card"><h3 style="margin-top:0">📄 Reiseunterlage</h3><div class="row"><button class="btn pri" data-a="doc">Ansehen, drucken oder als Datei speichern</button></div><p class="mut sm">Tagesplan, Adressen, Buchungen, Notfallnummern, Texte zum Zeigen. Funktioniert ohne Internet.</p></div><div class="card"><h3 style="margin-top:0">🗺️ Karte</h3><div class="row"><a class="btn" href="'+gmRoute()+'" target="_blank" rel="noopener">Ganze Reise in Google Maps</a></div><label class="row sm" style="margin-top:10px"><input type="checkbox" data-f="roads"'+(ROADS?' checked':'')+' style="width:auto"> Straßenrouten anzeigen (Auto, bis 500 km). Aus = nur Luftlinie.</label></div>'+
 '<div class="card"><h3 style="margin-top:0">💾 Sicherung</h3><div class="row"><button class="btn" data-a="ics">📆 Kalenderdatei (.ics)</button><button class="btn" data-a="export">Datei sichern</button><label class="btn">Datei laden<input type="file" id="fj" accept=".json,application/json" hidden></label></div></div>'+
 '<div class="card"><h3 style="margin-top:0">✏️ Reise</h3><label class="sm mut">Titel</label><input type="text" data-f="title" value="'+esc(S.title)+'"><div class="row" style="margin-top:10px"><button class="btn" data-a="reset">Diese Variante zurücksetzen</button></div></div>'+
@@ -534,7 +544,18 @@ function act(a,el){const s=S.stops[sel],i=+el.dataset.i,d=el.dataset;
  case'pl-base':s.pl.forEach(x=>{delete x.base});s.pl[i].base=1;save();render();break;
  case'it-add':s.items.push({g:'S',t:'',a:0});save();renderPanel();break;
  case'it-del':s.items.splice(i,1);save();renderPanel();break;
- case'lb':{const q=phList(S.stops[+d.si].pl[+d.pi])[+d.k];showLb(q);break}
+ case'cal-mode':{calMode=d.m;cmpOpen=false;if(calMode==='day'){curDay=null;ensureDay()}else{tlDay=null;actDay=null}render();if(calMode==='day'&&curDay)fitChain(curDay.si,curDay.day);break}
+ case'day-go':{curDay={si:+d.si,day:+d.day};ensureDay();render();fitChain(curDay.si,curDay.day);$('pbody').scrollTop=0;break}
+ case'cmp-open':{cmpOpen=false;S&&save();RG=d.r;LS.set('jp3-rg',RG);S=load();syLoad();curDay=null;sel=-1;openS=false;view='route';render();fitAll();break}
+ case'cmp-back':{cmpOpen=false;view='route';render();break}
+ case'cmp':{cmpOpen=true;view='cal';render();$('pbody').scrollTop=0;break}
+ case'sy-create':syCreate();break
+ case'sy-push':syPush();break
+ case'sy-pull':syPull();break
+ case'sy-link':copy(syLink(),'Link kopiert.');break
+ case'sy-off':if(confirm('Verbindung trennen? Der Plan bleibt auf diesem Gerät, wird aber nicht mehr abgeglichen.')){SY=null;LS.set(SYK(),'null');renderPanel()}break
+ case'pl-view':plView=d.v;LS.set('jp3-plv',plView);renderPanel();break
+ case'lb':{const q=+d.pi<0?stopPhotos(+d.si)[+d.k]:phList(S.stops[+d.si].pl[+d.pi])[+d.k];showLb(q);break}
  case'ph-del':{const x=s.pl[i];x.imgs.splice(+d.k,1);save();renderPanel();break}
  case'ph-find':{const x=s.pl[i];toast('Suche Fotos …');phPlace(s,x,true);break}
  case'img-del':s.imgs.splice(+d.k,1);save();render();break;
@@ -549,7 +570,7 @@ function act(a,el){const s=S.stops[sel],i=+el.dataset.i,d=el.dataset;
  case'bk-del':{if(d.g==='fb')S.fb.splice(i,1);else if(d.g==='sb')S.stops[+d.si].bk.splice(i,1);else{S.stops[+d.si].pl[i].bk=0}save();renderPanel();break}
  case'bk-add':{const t=prompt('Was muss gebucht werden? (z. B. Rail Pass, Reiseversicherung, Pocket-WiFi)');if(t&&t.trim()){S.fb.push({t:t.trim(),s:1,n:''});save();bkMore=true;renderPanel()}break}
  case'bk-more':bkMore=!bkMore;renderPanel();break;
- case'home-plan':{view='cal';tlDay={si:+d.si,day:+d.day};actDay={si:+d.si,day:+d.day};sel=+d.si;render();setTimeout(()=>{const e=$('d-'+d.si+'-'+d.day);if(e)e.scrollIntoView({block:'start',behavior:'smooth'})},60);if(mobile())sheet(2);break}
+ case'home-plan':{view='cal';calMode='day';cmpOpen=false;curDay={si:+d.si,day:+d.day};tlDay={si:+d.si,day:+d.day};actDay={si:+d.si,day:+d.day};sel=+d.si;render();setTimeout(()=>{const e=$('d-'+d.si+'-'+d.day);if(e)e.scrollIntoView({block:'start',behavior:'smooth'})},60);if(mobile())sheet(2);break}
  case'doc':openDoc();break;
  case'cal-opt':optimize(+d.si,+d.day);break;
  case'ics':{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([icsText()],{type:'text/calendar'}));a.download='japan-reise.ics';a.click();toast('Kalenderdatei erstellt. Öffnen und in euren Kalender importieren.');break}
@@ -560,7 +581,7 @@ function act(a,el){const s=S.stops[sel],i=+el.dataset.i,d=el.dataset;
  case'reset':if(confirm('Diese Variante auf den Vorschlag zurücksetzen? Eure Änderungen gehen verloren.')){S=mk(RG);sel=-1;openS=false;save();render();fitAll()}break;
  }}
 $('pbody').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;if(e.target.tagName==='A')return;act(b.dataset.a,b)};
-function field(t){const f=t.dataset.f,s=S.stops[sel],i=+t.dataset.i;
+function field(t){const f=t.dataset.f,s=S.stops[sel],i=+t.dataset.i;if(f==='syauto'){if(SY){SY.auto=t.checked;sySave()}return}
  switch(f){
  case'sn':s.n=t.value;saveSoon();drawMap();break;
  case'pn':s.pl[i].n=t.value;saveSoon();break;
@@ -650,7 +671,7 @@ function calMonths(){const a=pD(S.start),e=a+days()-1,d0=new Date(a*864e5),d1=ne
   for(let d=1;d<=len;d++){const n=first+d-1,si=stopAt(n);if(si<0){h+='<span class="mc off">'+d+'</span>';continue}const s=S.stops[si],t=tg0(s),dd=n-visit(si)[0],cnt=dayItems(si,dd).length;
    h+='<button class="mc" style="background:linear-gradient(160deg,'+t[2]+'cc,'+t[3]+'cc)" data-a="cal-day" data-si="'+si+'" data-day="'+dd+'" title="'+esc(s.n)+'">'+d+'<i>'+t[0]+'</i>'+(cnt?'<u>'+cnt+'</u>':'')+'</button>'}
   h+='</div></div>';if(y===d1.getUTCFullYear()&&m===d1.getUTCMonth())break;m++;if(m>11){m=0;y++}}return h}
-function vCal(){let h='<h2>📅 Plan</h2>'+calMonths()+'<div class="card"><label class="row sm"><input type="checkbox" data-f="rt"'+(S.rt!==false?' checked':'')+' style="width:auto"> Tagesroute endet wieder in der Unterkunft</label><label class="sm mut" style="display:block;margin-top:8px">Reisezeit-Schätzung (zu Fuß bis 1,5 km, sonst)<select data-f="mode"><option value="oepnv"'+(S.mode!=='car'?' selected':'')+'>🚆 Bahn/Bus, grob (Wartezeit eingerechnet)</option><option value="car"'+(S.mode==='car'?' selected':'')+'>🚗 Auto</option></select></label><div class="row" style="margin-top:8px"><button class="btn" data-a="ics">📆 In Handy-Kalender übernehmen (.ics)</button></div><p class="mut sm" style="margin:8px 0 0">Ziehen: am Griff ⠿ fassen und auf einen Tag oder zurück in „Noch ohne Tag“ legen. Name antippen = Uhrzeit oder Tag ändern. Kette: Unterkunft → Ort 1 → 2 → 3 → zurück, „🗺️ Karte“ zeigt sie auf der Karte.</p></div>';
+function vCal(){let h='<h2>📅 Plan</h2>'+calToggle()+calMonths()+'<div class="card"><label class="row sm"><input type="checkbox" data-f="rt"'+(S.rt!==false?' checked':'')+' style="width:auto"> Tagesroute endet wieder in der Unterkunft</label><label class="sm mut" style="display:block;margin-top:8px">Reisezeit-Schätzung (zu Fuß bis 1,5 km, sonst)<select data-f="mode"><option value="oepnv"'+(S.mode!=='car'?' selected':'')+'>🚆 Bahn/Bus, grob (Wartezeit eingerechnet)</option><option value="car"'+(S.mode==='car'?' selected':'')+'>🚗 Auto</option></select></label><div class="row" style="margin-top:8px"><button class="btn" data-a="ics">📆 In Handy-Kalender übernehmen (.ics)</button></div><p class="mut sm" style="margin:8px 0 0">Ziehen: am Griff ⠿ fassen und auf einen Tag oder zurück in „Noch ohne Tag“ legen. Name antippen = Uhrzeit oder Tag ändern. Kette: Unterkunft → Ort 1 → 2 → 3 → zurück, „🗺️ Karte“ zeigt sie auf der Karte.</p></div>';
  S.stops.forEach((s,si)=>{const t=tg0(s),pool=poolItems(si);h+='<h3>'+t[0]+' '+esc(s.n)+' <span class="mut sm">'+fD(visit(si)[0])+'–'+fD(visit(si)[1])+'</span></h3><div class="day"><div class="dhd"><b>Noch ohne Tag</b><span class="mut sm">'+pool.length+'</span></div><div class="dz" data-si="'+si+'" data-day="">'+(pool.length?pool.map(k=>chipHtml(si,k,0,calEd)).join(''):'<span class="mut sm">'+(s.pl.length?'Alles eingeplant':'Noch keine Orte, im Reiter Reise unter „Orte“ suchen')+'</span>')+'</div></div>';for(let d=0;d<nd(s);d++)h+=dayCard(si,d)});return h}
 function icsText(){const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Japan Reiseplaner//DE','CALSCALE:GREGORIAN'],z=n=>('0'+n).slice(-2),ymd=n=>{const d=new Date(n*864e5);return d.getUTCFullYear()+z(d.getUTCMonth()+1)+z(d.getUTCDate())},e2=t=>String(t||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');let u=0;
  const ev=(sum,loc,desc,a,b)=>{L.push('BEGIN:VEVENT','UID:jp2-'+Date.now()+'-'+(u++)+'@japan-planer','DTSTAMP:'+ymd(Date.now()/864e5)+'T000000Z','SUMMARY:'+e2(sum));if(loc)L.push('LOCATION:'+e2(loc));if(desc)L.push('DESCRIPTION:'+e2(desc));L.push(a,b,'END:VEVENT')};
@@ -748,9 +769,65 @@ function openDoc(){$('docp').innerHTML=docBody();$('doc').classList.add('on');$(
 function saveDocFile(){const html='<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(S.title)+'</title><style>'+DOCCSS+'@media print{.sec{break-inside:auto}}</style></head><body><div class="dpage">'+docBody()+'</div></body></html>';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='japan-reiseunterlage.html';a.click();toast('Datei gespeichert. Sie funktioniert ohne Internet.')}
 $('doc').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const a=b.dataset.d;if(a==='close')$('doc').classList.remove('on');else if(a==='print')window.print();else if(a==='save')saveDocFile()};
 
+/* ---------- v3 Teil 2: Tagesansicht, Filter, Fotos, Vergleich, Sync ---------- */
+let calMode='day',curDay=null,plView=LS.get('jp3-plv','cards');
+const dayList=()=>{const r=[];S.stops.forEach((s,si)=>{for(let d=0;d<nd(s);d++)r.push({si,day:d,n:visit(si)[0]+d})});return r};
+function ensureDay(){if(!S.stops.length)return;if(!curDay||!S.stops[curDay.si]||curDay.day>=nd(S.stops[curDay.si])||curDay.day<0){const r=nextDayRef();curDay={si:r.si,day:r.day}}tlDay={si:curDay.si,day:curDay.day};actDay={si:curDay.si,day:curDay.day};sel=curDay.si}
+function fitChain(si,dy){if(!MAP)return;const c=chainPts(si,dy),pts=c.pts.map(ll);try{MAP.fitBounds(pts,{paddingTopLeft:[40,70],paddingBottomRight:[40,(mobile()?$('panel').offsetHeight:0)+40],maxZoom:15})}catch(e){}}
+const calToggle=()=>'<div class="tabs" style="margin-top:0"><button data-a="cal-mode" data-m="day" class="'+(calMode==='day'?'on':'')+'">📅 Tag</button><button data-a="cal-mode" data-m="all" class="'+(calMode==='all'?'on':'')+'">🗓️ Monat und alle Tage</button></div>';
+function vDay(){if(!S.stops.length)return'<h2>Tag</h2><p class="mut">Noch keine Ziele.</p>';const list=dayList(),c=curDay,s=S.stops[c.si],t=tg0(s),b=bl(c.si),idx=list.findIndex(o=>o.si===c.si&&o.day===c.day),pv=list[idx-1],nx=list[idx+1];
+ let h=calToggle()+'<div class="dstrip">'+list.map(o=>{const st=S.stops[o.si],tt=tg0(st),on=o.si===c.si&&o.day===c.day,n=o.n,cnt=dayItems(o.si,o.day).length;return'<button class="dchip'+(on?' on':'')+'" data-a="day-go" data-si="'+o.si+'" data-day="'+o.day+'" style="--c:'+tt[2]+'"><i>'+tt[0]+'</i><b>'+WD[new Date(n*864e5).getUTCDay()]+'</b><span>'+fD(n)+'</span>'+(cnt?'<u>'+cnt+'</u>':'')+'</button>'}).join('')+'</div>';
+ h+='<div class="row" style="justify-content:space-between;margin:2px 0 8px"><b>'+t[0]+' '+esc(s.n)+'</b><span class="mut sm">Tag '+(c.day+1)+' von '+nd(s)+'</span></div>'+(b?'<div class="bloom '+b.k+'">'+b.e+' '+esc(b.t)+'</div>':'');
+ const pool=poolItems(c.si).filter(k=>s.pl[k].ty!=='H');h+='<div class="day"><div class="dhd"><b>Noch ohne Tag</b><span class="mut sm">'+pool.length+' · auf die Zeitachse ziehen</span></div><div class="dz" data-si="'+c.si+'" data-day="">'+(pool.length?pool.map(k=>chipHtml(c.si,k,0,calEd)).join(''):'<span class="mut sm">'+(s.pl.length?'Alles eingeplant.':'Noch keine Orte. Im Reiter Reise unter „Orte“ suchen.')+'</span>')+'</div></div>';
+ h+=dayCard(c.si,c.day)+'<div class="row" style="justify-content:space-between;margin:6px 0 14px">'+(pv?'<button class="btn" data-a="day-go" data-si="'+pv.si+'" data-day="'+pv.day+'">◀ '+dstr(pv.n)+'</button>':'<span></span>')+(nx?'<button class="btn" data-a="day-go" data-si="'+nx.si+'" data-day="'+nx.day+'">'+dstr(nx.n)+' ▶</button>':'')+'</div>';return h}
+/* Filter */
+let HID={},ONLYDAY=false;try{const f=JSON.parse(LS.get('jp3-flt','{}'));HID=f.h||{};ONLYDAY=!!f.o}catch(e){}
+const saveFlt=()=>LS.set('jp3-flt',JSON.stringify({h:HID,o:ONLYDAY}));
+function renderFlt(){const cnt={};S.stops.forEach(s=>s.pl.forEach(x=>{if(x.lat!=null)cnt[x.ty]=(cnt[x.ty]||0)+1}));let h='<b style="font-size:.85rem">Auf der Karte zeigen</b><div class="chips" style="margin-top:6px">'+PT.map(t=>cnt[t[0]]?'<button class="fchip'+(HID[t[0]]?'':' on')+'" data-t="'+t[0]+'">'+t[1]+' '+t[2]+' <small>'+cnt[t[0]]+'</small></button>':'').join('')+'</div>';
+ h+='<label class="row sm" style="margin-top:8px"><input type="checkbox" id="fod"'+(ONLYDAY?' checked':'')+' style="width:auto"> Nur Orte des gewählten Tages</label><div class="row" style="margin-top:6px"><button class="btn sm2" id="fall">Alle zeigen</button></div>';$('mfp').innerHTML=h;$('zf').classList.toggle('on',Object.keys(HID).some(k=>HID[k])||ONLYDAY)}
+$('zf').onclick=()=>{renderFlt();$('mfp').classList.toggle('on')};
+$('mfp').onclick=e=>{const c=e.target.closest('.fchip');if(c){HID[c.dataset.t]=!HID[c.dataset.t];saveFlt();renderFlt();drawMap();return}if(e.target.id==='fall'){HID={};ONLYDAY=false;saveFlt();renderFlt();drawMap()}};
+$('mfp').onchange=e=>{if(e.target.id==='fod'){ONLYDAY=e.target.checked;saveFlt();renderFlt();drawMap()}};
+/* Fotos */
+function stopPhotos(si){const s=S.stops[si],r=[];(s.imgs||[]).forEach((u,k)=>r.push({u,own:1,si,pi:-1,k}));(s.ph||[]).forEach((q,j)=>r.push({u:q.u,si,pi:-1,k:0}));s.pl.forEach((x,pi)=>{const l=phList(x);if(l[0])r.push({u:l[0].u,si,pi,k:0})});return r}
+function impHtml(si){const l=stopPhotos(si).slice(0,9);if(!l.length)return'';return'<h3>📷 Impressionen</h3><div class="imp">'+l.map((q,n)=>'<img src="'+esc(q.u)+'" alt="" loading="lazy" data-a="lb" data-si="'+q.si+'" data-pi="-1" data-k="'+n+'">').join('')+'</div>'}
+/* Vergleich */
+function statsFor(r){const old=S;try{if(r!==RG){let o=null;try{const t=LS.get(KEY(r),'')||LS.get('jp2-'+r,'');if(t){const j=JSON.parse(t);if(j&&j.stops)o=mig(j)}}catch(e){}S=o||mig(mk(r))}
+ const v=S.stops,c=cats();let km=0,fl=0;for(let i=1;i<v.length;i++){const d=hav(v[i-1],v[i]),q=RTC[legKey(v[i-1],v[i])];if(d>500)fl++;km+=q&&d<=500?q.d/1000:(d>500?d:d*1.3)}
+ let ok=0,wn=0;v.forEach((s,i)=>{const b=bl(i);if(b){wn++;if(b.k==='ok')ok++}});const tc=k=>v.filter(s=>(s.tg||'').includes(k)).length;
+ return{r,t:S.title,n:v.length,d:days(),cost:grand(),km,fl,ok,wn,tags:{N:tc('N'),E:tc('E'),K:tc('K'),S:tc('S'),B:tc('B'),R:tc('R')},names:v.map(s=>s.n.split(' &')[0]).join(' → ')}}finally{S=old}}
+function vCmp(){const rs=Object.keys(PRE).map(statsFor),best=(f,mx)=>{const vals=rs.map(f),m=mx?Math.max(...vals):Math.min(...vals);return x=>f(x)===m};const bc=best(x=>x.cost,0),bk=best(x=>x.km,0),bb=best(x=>x.ok,1);
+ const row=(l,f,cls)=>'<tr><th>'+l+'</th>'+rs.map(x=>'<td class="'+(cls&&cls(x)?'best':'')+'">'+f(x)+'</td>').join('')+'</tr>';
+ let h='<button class="back" data-a="cmp-back">‹ Zurück</button><h2>⚖️ Varianten im Vergleich</h2><div style="overflow-x:auto"><table class="cmp"><tr><th></th>'+rs.map(x=>'<th'+(x.r===RG?' class="cur"':'')+'>'+SHORT[x.r]+'</th>').join('')+'</tr>'+
+ row('Route',x=>'<span class="sm">'+esc(x.names)+'</span>')+row('Tage',x=>x.d)+row('Kosten für zwei',x=>eur(x.cost),bc)+row('pro Person',x=>eur(x.cost/2),bc)+row('Strecke',x=>'ca. '+Math.round(x.km).toLocaleString('de-AT')+' km',bk)+row('Flüge im Land',x=>x.fl)+row('Blüte passt',x=>x.ok+' von '+x.wn,bb)+
+ row('🌿 Natur',x=>x.tags.N)+row('🍜 Essen',x=>x.tags.E)+row('🛕 Kultur',x=>x.tags.K)+row('🏙️ Stadt',x=>x.tags.S)+row('🏖️ Strand',x=>x.tags.B)+row('😌 Entspannung',x=>x.tags.R)+
+ '<tr><th></th>'+rs.map(x=>'<td>'+(x.r===RG?'<span class="badge ok">aktiv</span>':'<button class="btn sm2" data-a="cmp-open" data-r="'+x.r+'">Öffnen</button>')+'</td>').join('')+'</tr></table></div><p class="mut sm">Grün: bester Wert in der Zeile (günstigste Kosten, kürzeste Strecke, meiste Blüte-Treffer). Eure Änderungen sind eingerechnet. Alle Zahlen sind Schätzungen.</p>';return h}
+/* Gemeinsam planen (jsonblob.com) */
+const JB='https://jsonblob.com/api/jsonBlob',JH={'Content-Type':'application/json','Accept':'application/json'};
+const SYK=()=>'jp3-sync-'+RG;
+function syLoad(){try{SY=JSON.parse(LS.get(SYK(),'null'))}catch(e){SY=null}}
+function sySave(){LS.set(SYK(),JSON.stringify(SY))}
+function syStrip(){const o=JSON.parse(JSON.stringify(S));o.stops.forEach(s=>{s.imgs=[];delete s.ph;s.pl.forEach(x=>{x.imgs=[];delete x.ph;delete x.info})});return o}
+function syMerge(rem){const loc={};S.stops.forEach(s=>{loc[s.id]=s});rem.stops.forEach(s=>{const l=loc[s.id];if(l){s.imgs=l.imgs||[];s.ph=l.ph;s.phTried=l.phTried;s.pl.forEach(x=>{const m=(l.pl||[]).find(y=>y.n===x.n);if(m){x.imgs=m.imgs||[];x.ph=m.ph;x.phTried=m.phTried;x.info=m.info}})}});return rem}
+const syLink=()=>location.origin+location.pathname+'#j='+SY.id+'~'+RG;
+async function syCreate(){try{const r=await fetch(JB,{method:'POST',headers:JH,body:JSON.stringify({rg:RG,ts:S.ts||Date.now(),s:syStrip()})});if(!r.ok)throw new Error('HTTP '+r.status);const loc=r.headers.get('Location')||r.headers.get('X-jsonblob');if(!loc)throw new Error('Der Dienst hat keine Adresse zurückgegeben (Browser-Sperre).');SY={id:String(loc).split('/').pop(),rts:S.ts||0,last:Date.now(),auto:true};sySave();DIRTY=false;copy(syLink(),'Gemeinsamer Plan erstellt. Link kopiert: in WhatsApp senden.');renderPanel()}catch(e){toast('Gemeinsamer Plan konnte nicht erstellt werden: '+e.message)}}
+async function syPush(silent){if(!SY)return;try{const ts=S.ts||Date.now();const r=await fetch(JB+'/'+SY.id,{method:'PUT',headers:JH,body:JSON.stringify({rg:RG,ts,s:syStrip()})});if(!r.ok)throw new Error('HTTP '+r.status);SY.rts=ts;SY.last=Date.now();sySave();DIRTY=false;if(!silent)toast('Hochgeladen.');if(view==='more')renderPanel()}catch(e){if(!silent)toast('Hochladen fehlgeschlagen: '+e.message)}}
+function syApply(rem){inPull=true;try{S=mig(syMerge(rem.s));S.ts=rem.ts;LS.set(KEY(RG),JSON.stringify(S));SY.rts=rem.ts;SY.last=Date.now();sySave();DIRTY=false;curDay=null;sel=-1;openS=false;render()}finally{inPull=false}}
+async function syPull(silent){if(!SY)return;try{const r=await fetch(JB+'/'+SY.id,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const rem=await r.json();if(!rem||!rem.s||!rem.s.stops)throw new Error('Unerwartete Antwort');
+ if(rem.ts>(SY.rts||0)){if(!DIRTY){syApply(rem);if(!silent||true)toast('Neuer Stand von deiner Reisepartnerin geladen.')}else if(confirm('Ihr habt beide geändert.\n\nOK = meinen Stand behalten und hochladen\nAbbrechen = den neuen Stand laden (meine letzten Änderungen gehen verloren)'))syPush();else syApply(rem)}else if(!silent)toast('Schon auf dem neuesten Stand.')}catch(e){if(!silent)toast('Abholen fehlgeschlagen: '+e.message)}}
+let pTmr=null;function pushSoon(){if(!SY||SY.auto===false)return;clearTimeout(pTmr);pTmr=setTimeout(()=>syPush(true),4000)}
+async function syJoin(id,rg){try{const r=await fetch(JB+'/'+id,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const rem=await r.json();if(!rem||!rem.s||!rem.s.stops)throw new Error('Unerwartete Antwort');RG=PRE[rem.rg||rg]?(rem.rg||rg):RG;LS.set('jp3-rg',RG);S=mig(rem.s);S.ts=rem.ts;inPull=true;LS.set(KEY(RG),JSON.stringify(S));inPull=false;SY={id,rts:rem.ts,last:Date.now(),auto:true};sySave();DIRTY=false;curDay=null;sel=-1;openS=false;view='home';render();fitAll();toast('Gemeinsamer Plan geladen. Änderungen werden automatisch geteilt.')}catch(e){toast('Gemeinsamer Plan konnte nicht geladen werden: '+e.message)}}
+function syCard(){const t=SY&&SY.last?new Date(SY.last).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):'';
+ return'<div class="card"><h3 style="margin-top:0">👫 Gemeinsam planen</h3>'+(!SY?'<p class="sm" style="margin:0 0 8px">Erstellt einen gemeinsamen Plan: ihr beide öffnet denselben Link, Änderungen gleichen sich automatisch ab. Fotos bleiben auf dem jeweiligen Gerät.</p><button class="btn pri" data-a="sy-create">Gemeinsamen Plan erstellen</button><p class="mut sm">Hinweis: Der Plan liegt auf dem kostenlosen Dienst jsonblob.com. Jeder, der den Link kennt, kann ihn lesen und ändern. Gebt ihn nur an die Person weiter, mit der ihr plant.</p>':
+ '<p class="sm" style="margin:0 0 8px">✅ Verbunden für diese Variante. '+(t?'Zuletzt abgeglichen um '+t+'.':'')+(DIRTY?' <b>Ungesicherte Änderungen.</b>':'')+'</p><div class="row"><button class="btn" data-a="sy-push">⬆️ Hochladen</button><button class="btn" data-a="sy-pull">⬇️ Neuen Stand holen</button><button class="btn" data-a="sy-link">🔗 Link kopieren</button></div><label class="row sm" style="margin-top:8px"><input type="checkbox" data-f="syauto"'+(SY.auto!==false?' checked':'')+' style="width:auto"> Änderungen automatisch hochladen und regelmäßig abholen</label><div class="row" style="margin-top:6px"><button class="btn sm2" data-a="sy-off">Verbindung trennen</button></div><p class="mut sm">Haben beide gleichzeitig geändert, fragt die App, welcher Stand gelten soll. Die Variante ist gemeinsam, andere Varianten bleiben lokal.</p>')+'</div>'}
+setInterval(()=>{if(SY&&document.visibilityState==='visible'&&!DIRTY)syPull(true)},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SY&&!DIRTY)syPull(true)});
+
+let cmpOpen=false;
 /* Start */
 (function(){const m=/[#&]p=([^&]+)/.exec(location.hash);if(m){try{const o=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));if(o.s&&o.s.stops&&confirm('Geteilten Plan laden? Euer Stand in dieser Variante wird ersetzt.')){RG=PRE[o.rg]?o.rg:RG;LS.set('jp3-rg',RG);S=mig(o.s);save()}}catch(e){}history.replaceState(null,'',location.pathname)}})();
-initMap();sheet(1);render();fitAll();phAll();
+syLoad();(function(){const m=/[#&]j=([^&~]+)(?:~(v\d))?/.exec(location.hash);if(m){history.replaceState(null,'',location.pathname);window.__join=[m[1],m[2]]}})();
+initMap();sheet(1);render();fitAll();phAll();renderFlt();if(window.__join)syJoin(window.__join[0],window.__join[1]);else if(SY)syPull(true);
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
